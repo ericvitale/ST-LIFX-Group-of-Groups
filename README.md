@@ -15,8 +15,8 @@ Setting Brightness
 2. Groups 1 to 10 - [Required, 1st & 2nd] You can choose from up to 10 groups, the first two are required. Enter the group name, case sensitive. No need to enter a group id.
 3. Log Level - Enter: TRACE, DEBUG, INFO, WARN, ERROR
 
-** Acknowledgements
+## Acknowledgements
 Insperation to create this device handler came from AdamV (https://github.com/adampv/smartthings/blob/master/LIFXGroupversion.groovy). Adam also credits Nicolas Cerveaux.
 
-** How to get your API Token
+## How to get your API Token
 Navigate to https://cloud.lifx.com, sign in and then go to the settings section and select generate new token. save the token somewhere safe.
