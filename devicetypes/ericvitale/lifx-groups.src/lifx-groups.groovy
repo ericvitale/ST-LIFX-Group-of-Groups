@@ -12,6 +12,8 @@
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  *  
+ *  You can find my other device handlers & SmartApps @ https://github.com/ericvitale
+ *
  *  Some code borrowed from AdamV & Nicolas Cerveaux
  *
  */
@@ -46,7 +48,7 @@ metadata {
         input "group08", "text", title: "Group 8", required: false
         input "group09", "text", title: "Group 9", required: false
         input "group10", "text", title: "Group 10", required: false
-        input "logging", "text", title: "Log Level", required: true, defaultValue: "INFO"
+        input "logging", "text", title: "Log Level", required: false, defaultValue: "INFO"
     }
 
     simulator {
