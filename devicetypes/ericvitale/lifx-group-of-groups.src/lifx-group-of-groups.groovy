@@ -33,6 +33,10 @@ metadata {
         command "setAdjustedColor"
         command "setColor"
         command "refresh"
+        command "poll"
+        command "sceneOne"
+        command "sceneTwo"
+        command "sceneThree"
         
         attribute "colorName", "string"
     }
@@ -49,6 +53,12 @@ metadata {
         input "group08", "text", title: "Group 8", required: false
         input "group09", "text", title: "Group 9", required: false
         input "group10", "text", title: "Group 10", required: false
+        input "scene01Brightness", "number", title: "Scene 1 Brightness", required: false
+        input "scene01Color", "text", title: "Scene 1 Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
+        input "scene02Brightness", "number", title: "Scene 2 Brightness", required: false
+        input "scene02Color", "text", title: "Scene 2 Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
+        input "scene03Brightness", "number", title: "Scene 3 Brightness", required: false
+        input "scene03Color", "text", title: "Scene 3 Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
         input "logging", "text", title: "Log Level", required: false, defaultValue: "INFO"
     }
 
@@ -60,7 +70,7 @@ metadata {
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
 				attributeState "on", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#79b821", nextState:"turningOff"
 				attributeState "off", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ffffff", nextState:"turningOn"
-				attributeState "onish", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ff0000", nextState:"turningOn"
+				attributeState "onish", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ff0000", nextState:"turningOn"
 				attributeState "turningOn", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#fffA62", nextState:"turningOff"
 				attributeState "turningOff", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#fffA62", nextState:"turningOn"
 			}
@@ -102,13 +112,24 @@ metadata {
             state "color", action:"setColor"
         }
         
-        standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
-			state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
+        standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
+			state "default", label:"Refresh", action:"refresh.refresh", icon: "st.secondary.refresh"
+		}
+        
+        standardTile("sceneOne", "device.sceneOne", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
+			state "default", label:"Scene One", action:"sceneOne", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
+		}
+        
+        standardTile("sceneTwo", "device.sceneTwo", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
+			state "default", label:"Scene Two", action:"sceneTwo", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
+		}
+        
+        standardTile("sceneThree", "device.sceneThree", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
+			state "default", label:"Scene Three", action:"sceneThree", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
 		}
 
-
         main(["switch"])
-        details(["switch", "Brightness", "levelSliderControl", "colorTemp", "colorTempSliderControl", "rgbSelector", "refresh"])
+        details(["switch", "Brightness", "levelSliderControl", "colorTemp", "colorTempSliderControl", "rgbSelector", "poll", "sceneOne", "sceneTwo", "sceneThree", "refresh"])
     }
 }
 
@@ -184,6 +205,9 @@ def determineLogLevel(data) {
 }
 
 def log(data, type) {
+    
+    data = "LIFXGoG -- " + data
+    
     try {
         if(determineLogLevel(type) >= determineLogLevel(logging)) {
             if(type.toUpperCase() == "TRACE") {
@@ -283,7 +307,7 @@ def setColorTemperature(value) {
 	sendEvent(name: "colorTemperature", value: value)
 	sendEvent(name: "color", value: "#ffffff")
 	sendEvent(name: "saturation", value: 0)
-    sendEvent(name: "colorName", value: genericName)
+    //sendEvent(name: "colorName", value: genericName)
     
     log("End setting groups color temperature to ${value}.", "DEBUG")
 }
@@ -410,8 +434,74 @@ def poll() {
     log("End poll.", "DEBUG")
 }
 
-/*def setCoolingSetpoint(val) {
-	log("Begin setCoolingSetpoint(${val}).", "DEBUG")
-    setColorTemperature(val)
-    log("End setCoolingSetpoint(val).", "DEBUG")
-}*/
+def parse() {
+	log("Begin parse()", "DEBUG")
+    poll()
+    log("End parse().", "DEBUG")
+}
+
+def sceneOne() {
+	log("Begin sceneOne().", "DEBUG")
+    log("sceneOne(${scene01Brightness}, ${scene01Color}", "DEBUG")
+    setScene(scene01Brightness, scene01Color)
+	log("End sceneOne().", "DEBUG")
+}
+
+def sceneTwo() {
+	log("Begin sceneTwo().", "DEBUG")
+    log("sceneTwo(${scene02Brightness}, ${scene02Color}", "DEBUG")
+    setScene(scene02Brightness, scene02Color)
+	log("End sceneTwo().", "DEBUG")
+}
+
+def sceneThree() {
+	log("Begin sceneThree().", "DEBUG")
+    log("sceneThree(${scene03Brightness}, ${scene03Color}", "DEBUG")
+    setScene(scene03Brightness, scene03Color)
+	log("End sceneThree().", "DEBUG")
+}
+
+def setScene(brightness, temp) {
+	log("Begin setScene(...)", "DEBUG")
+    
+    if(brightness != null && temp != null) {
+    	def brightnessValue = brightness / 100
+    	buildGroupList()
+   	 	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["color" : "${temp.toLowerCase()}", "brightness" : "${brightnessValue}" ,"power" : "on"])
+       
+        sendEvent(name: "level", value: brightness)
+	    sendEvent(name: "switch", value: "on")
+       
+       if(temp.toLowerCase().startsWith("kelvin:")) {
+	        sendEvent(name: "colorTemperature", value: value)
+			sendEvent(name: "color", value: "#ffffff")
+			sendEvent(name: "saturation", value: 0)
+        } else {
+        	sendEvent(name: "color", value: getHex(temp))
+        }
+    }
+    
+    log("End setScene(...)", "DEBUG")
+}
+
+def getHex(val) {
+	if(val.toLowerCase() == "red") {
+    	return "#ff0000"
+   	} else if(val.toLowerCase() == "blue") {
+    	return "#0000ff"
+    } else if(val.toLowerCase() == "green") {
+    	return "#00ff00"
+    } else if(val.toLowerCase() == "orange") {
+    	return "#ff8000"
+    } else if(val.toLowerCase() == "yellow") {
+    	return "#ffff00"
+    } else if(val.toLowerCase() == "cyan") {
+    	return "#00ffff"
+    } else if(val.toLowerCase() == "purple") {
+    	return "#800080"
+    } else if(val.toLowerCase() == "pink") {
+    	return "#ffb6c1"
+    } else {
+    	return "#ffffff"
+    }
+}
