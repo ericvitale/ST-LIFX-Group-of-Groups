@@ -12,6 +12,7 @@
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  *  
+ *  You can find the latest version of this device handler @ https://github.com/ericvitale/ST-LIFX-Group-of-Groups
  *  You can find my other device handlers & SmartApps @ https://github.com/ericvitale
  *
  *  Some code borrowed from AdamV & Nicolas Cerveaux
@@ -28,6 +29,7 @@ metadata {
 		capability "Color Temperature"
 		capability "Actuator"
         capability "Sensor"
+        capability "Thermostat" // This is here so that I can adjust the color temperature via routines.
         
         command "setAdjustedColor"
         command "setColor"
@@ -133,7 +135,6 @@ def buildGroupList() {
         }
         
         if(group05 != null) {
-        
             state.groupsList = state.groupsList + "group:" + group05 + ","
         }
                 
@@ -180,9 +181,6 @@ def determineLogLevel(data) {
 }
 
 def log(data, type) {
-
-	data = "LFIXGs -- " + data
-    
     try {
         if(determineLogLevel(type) >= determineLogLevel(logging)) {
             if(type.toUpperCase() == "TRACE") {
@@ -407,4 +405,12 @@ def poll() {
     	sendMessageToLIFXWithResponse("lights/" + state.groupsList, "GET")
     
     log("End poll.", "DEBUG")
+}
+
+def setCoolingSetpoint(val) {
+	log("Begin setCoolingSetpoint(${val}).", "DEBUG")
+    setColorTemperature(val)
+    //buildGroupList()
+    //sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "red", power: "on"])
+    log("End setCoolingSetpoint(val).", "DEBUG")
 }
