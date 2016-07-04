@@ -1,4 +1,4 @@
-# ST-LIFX-Groups
+# ST-LIFX-Group-of-Groups
 
 ## Summary
 This SmartThings device handler allows you to create a "virtual" device based on a set of LIFX groups. If you have a group called "Kitchen" and a group called "Dining Room", you can create a group of groups called "First Floor" (or whatever) and add the two LIFX groups to it. You can treat the two groups as a single device. This handles up to 10 groups per device.
