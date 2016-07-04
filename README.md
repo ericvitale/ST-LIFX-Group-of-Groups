@@ -1,18 +1,22 @@
 # ST-LIFX-Group-of-Groups
 
 ## Summary
-This SmartThings device handler allows you to create a "virtual" device based on a set of LIFX groups. If you have a group called "Kitchen" and a group called "Dining Room", you can create a group of groups called "First Floor" (or whatever) and add the two LIFX groups to it. You can treat the two groups as a single device. This handles up to 10 groups per device.
+This SmartThings device handler allows you to create a "virtual" device based on a single LIFIX group or a set of LIFX groups. 
+
+Example 1: If you have a group called "Kitchen" and a group called "Dining Room", you can create a group of groups called "First Floor" (or whatever) and add the two LIFX groups to it. You can treat the two groups as a single device. This handles up to 10 groups per device.
+
+Example 2: If you have a single group within the LIFX called "Kitchen" you can add it and control your set of lights as a single device called, you guessed it "Kitchen" (or whatever else).
 
 ## This device handler supports
 On / Off
 Setting Color
 Setting Color Temperature
 Setting Brightness
-2 to 10 groups as a single device (no point in doing just one) - If you want to use just one use this device handler (https://github.com/ericvitale/other/blob/master/devicetypes/lifx/lifx-group.src/lifx-group.groovy).
+1 to 10 groups as a single device
 
 ## Inputs
 1. API Token - [Required] You have to get this from LIFX. It is a long character string so text it to yourself and copy and paste it in.
-2. Groups 1 to 10 - [Required, 1st & 2nd] You can choose from up to 10 groups, the first two are required. Enter the group name, case sensitive. No need to enter a group id.
+2. Groups 1 to 10 - [Required, 1st] You can choose from up to 10 groups, the first group is required. Enter the group name, case sensitive. No need to enter a group id.
 3. Log Level - Enter: TRACE, DEBUG, INFO, WARN, ERROR
 
 ## Acknowledgements
