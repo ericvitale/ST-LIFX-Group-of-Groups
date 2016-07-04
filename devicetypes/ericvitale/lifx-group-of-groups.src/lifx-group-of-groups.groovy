@@ -29,7 +29,6 @@ metadata {
 		capability "Color Temperature"
 		capability "Actuator"
         capability "Sensor"
-        capability "Thermostat" // This is here so that I can adjust the color temperature via routines.
         
         command "setAdjustedColor"
         command "setColor"
@@ -41,7 +40,7 @@ metadata {
     preferences {
     	input "token", "text", title: "API Token", required: true
         input "group01", "text", title: "Group 1", required: true
-        input "group02", "text", title: "Group 2", required: true
+        input "group02", "text", title: "Group 2", required: false
         input "group03", "text", title: "Group 3", required: false
         input "group04", "text", title: "Group 4", required: false
         input "group05", "text", title: "Group 5", required: false
@@ -124,7 +123,11 @@ def buildGroupList() {
 	log("Begin method buildGroupList().", "DEBUG")
 
     try {
-        state.groupsList = "group:" + group01 + ",group:" + group02 + ","
+        state.groupsList = "group:" + group01 + ","
+        
+        if(group02 != null) {
+        	state.groupsList = state.groupsList + "group:" + group02 + ","
+        }
         
         if(group03 != null) {
             state.groupsList = state.groupsList + "group:" + group03 + ","
@@ -407,10 +410,8 @@ def poll() {
     log("End poll.", "DEBUG")
 }
 
-def setCoolingSetpoint(val) {
+/*def setCoolingSetpoint(val) {
 	log("Begin setCoolingSetpoint(${val}).", "DEBUG")
     setColorTemperature(val)
-    //buildGroupList()
-    //sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "red", power: "on"])
     log("End setCoolingSetpoint(val).", "DEBUG")
-}
+}*/
