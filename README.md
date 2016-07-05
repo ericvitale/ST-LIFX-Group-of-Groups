@@ -28,3 +28,7 @@ Insperation to create this device handler came from AdamV (https://github.com/ad
 
 ## How to get your API Token
 Navigate to https://cloud.lifx.com, sign in and then go to the settings section and select generate new token.
+
+## Design Decisions
+1. I decided to hard code up to 10 groups versus having a single group preference that was comma delimited. The comma delimited version would allow for any number of groups. I opted for the fixed number as I think it is a better user experience for the less technical people out there.
+2. Still trying to decide what I am going to do in the UI when the individual groups or bulbs are not in sync. For example you manually turn on a single bulb or goup using the LIFX app. Right now I show "Onish" if some of the lights are on and some are off.
