@@ -43,13 +43,6 @@ metadata {
     
     preferences {
     	input "token", "text", title: "API Token", required: true
-
-        /*input "scene01Brightness", "number", title: "Scene 1 Brightness", required: false
-        input "scene01Color", "text", title: "Scene 1 Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
-        input "scene02Brightness", "number", title: "Scene 2 Brightness", required: false
-        input "scene02Color", "text", title: "Scene 2 Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
-        input "scene03Brightness", "number", title: "Scene 3 Brightness", required: false
-        input "scene03Color", "text", title: "Scene 3 Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"*/
         
         input "group01", "text", title: "Group 1", required: true
      	(2..10).each() { n->
