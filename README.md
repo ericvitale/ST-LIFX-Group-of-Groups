@@ -7,6 +7,8 @@ Example 1: If you have a group called "Kitchen" and a group called "Dining Room"
 
 Example 2: If you have a single group within the LIFX called "Kitchen" you can add it and control your set of lights as a single device called, you guessed it "Kitchen" (or whatever else).
 
+This device handler also supports scenes, see the preferences section below.
+
 ## This device handler supports
 On / Off
 Setting Color
