@@ -43,30 +43,32 @@ metadata {
     
     preferences {
     	input "token", "text", title: "API Token", required: true
-        input "group01", "text", title: "Group 1", required: true
-        input "group02", "text", title: "Group 2", required: false
-        input "group03", "text", title: "Group 3", required: false
-        input "group04", "text", title: "Group 4", required: false
-        input "group05", "text", title: "Group 5", required: false
-        input "group06", "text", title: "Group 6", required: false
-        input "group07", "text", title: "Group 7", required: false
-        input "group08", "text", title: "Group 8", required: false
-        input "group09", "text", title: "Group 9", required: false
-        input "group10", "text", title: "Group 10", required: false
-        input "scene01Brightness", "number", title: "Scene 1 Brightness", required: false
+
+        /*input "scene01Brightness", "number", title: "Scene 1 Brightness", required: false
         input "scene01Color", "text", title: "Scene 1 Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
         input "scene02Brightness", "number", title: "Scene 2 Brightness", required: false
         input "scene02Color", "text", title: "Scene 2 Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
         input "scene03Brightness", "number", title: "Scene 3 Brightness", required: false
-        input "scene03Color", "text", title: "Scene 3 Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
+        input "scene03Color", "text", title: "Scene 3 Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"*/
+        
+        input "group01", "text", title: "Group 1", required: true
+     	(2..10).each() { n->
+        	input "group0${n}", "text", title: "Group ${n}", required: false
+        }
+        
+        (1..3).each() { n->
+        	input "scene0${n}Brightness", "number", title: "Scene ${n} - Brightness", required: false
+            input "scene0${n}Color", "text", title: "Scene ${n} - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
+        }
+       
         input "logging", "text", title: "Log Level", required: false, defaultValue: "INFO"
     }
 
     simulator {
     }
     
-    tiles {
-    	multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 3, canChangeIcon: true){
+    tiles(scale: 2) {
+    	multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 4, canChangeIcon: true){
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
 				attributeState "on", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#79b821", nextState:"turningOff"
 				attributeState "off", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ffffff", nextState:"turningOn"
