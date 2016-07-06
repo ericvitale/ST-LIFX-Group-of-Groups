@@ -205,15 +205,15 @@ def log(data, type) {
     
     try {
         if(determineLogLevel(type) >= determineLogLevel(logging)) {
-            if(type.toUpperCase() == "TRACE") {
+            if(type?.toUpperCase() == "TRACE") {
                 log.trace "${data}"
-            } else if(type.toUpperCase() == "DEBUG") {
+            } else if(type?.toUpperCase() == "DEBUG") {
                 log.debug "${data}"
-            } else if(type.toUpperCase() == "INFO") {
+            } else if(type?.toUpperCase() == "INFO") {
                 log.info "${data}"
-            } else if(type.toUpperCase() == "WARN") {
+            } else if(type?.toUpperCase() == "WARN") {
                 log.warn "${data}"
-            } else if(type.toUpperCase() == "ERROR") {
+            } else if(type?.toUpperCase() == "ERROR") {
                 log.error "${data}"
             } else {
                 log.error "LFIXGs -- Invalid Log Setting"
