@@ -220,7 +220,7 @@ def log(data, type) {
             }
         }
     } catch(e) {
-    	log.error ${e}
+    	log.error "${e}"
     }
 }
 
