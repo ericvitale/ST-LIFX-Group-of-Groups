@@ -325,6 +325,11 @@ private sendMessageToLIFX(path, method="GET", body=null) {
         }
     } catch(Exception e) {
         log(e, "ERROR")
+        if(e?.getMessage().toUpperCase() == "NOT FOUND") {
+        	log("LIFX did not understand one of your group names. They need to match what is in your LIFX app and they are case sensitive.", "ERROR")
+        } else if(e?.getMessage().toUpperCase() == "UNAUTHORIZED") {
+        	log("The API token you entered is not correct and LFIX will not authorize your remote call.", "ERROR")
+        }
     }
 }
 
@@ -350,6 +355,11 @@ private sendMessageToLIFXWithResponse(path, method="GET", body=null) {
         return resp
     } catch(Exception e) {
         log(e, "ERROR")
+        if(e?.getMessage().toUpperCase() == "NOT FOUND") {
+        	log("LIFX did not understand one of your group names. They need to match what is in your LIFX app and they are case sensitive.", "ERROR")
+        } else if(e?.getMessage().toUpperCase() == "UNAUTHORIZED") {
+        	log("The API token you entered is not correct and LFIX will not authorize your remote call.", "ERROR")
+        }
     }
 }
 
