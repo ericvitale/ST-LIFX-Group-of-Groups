@@ -108,7 +108,7 @@ metadata {
         }
         
         standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
-			state "default", label:"Refresh", action:"refresh.refresh", icon: "st.secondary.refresh"
+			state "default", label:"", action:"refresh.refresh", icon: "st.secondary.refresh"
 		}
         
         standardTile("sceneOne", "device.sceneOne", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
@@ -265,11 +265,10 @@ def setLevel(value) {
     def brightness = data.level / 100
     
     buildGroupList()
-    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["brightness": brightness, "power": "on"])
-    log("Response = ${resp}.", "DEBUG")
+	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["brightness": brightness, "power": "on"])
 
-    sendEvent(name: 'level', value: value)
-    sendEvent(name: 'switch', value: "on")
+    sendEvent(name: "level", value: value)
+    sendEvent(name: "switch", value: "on")
     
     log("End setting groups level to ${value}.", "DEBUG")
 }
@@ -302,7 +301,6 @@ def setColorTemperature(value) {
 	sendEvent(name: "colorTemperature", value: value)
 	sendEvent(name: "color", value: "#ffffff")
 	sendEvent(name: "saturation", value: 0)
-    //sendEvent(name: "colorName", value: genericName)
     
     log("End setting groups color temperature to ${value}.", "DEBUG")
 }
@@ -362,27 +360,13 @@ private parseResponse(resp) {
 		return []
 	}
     
-    else if (resp.data.results[0] != null) {
+    if(resp.data.results[0] != null) {
     	log("Results: "+resp.data.results[0], "DEBUG")
-    } else {
-        def data = resp.data[0]
-        log.debug("Data: ${data}")
-
-        sendEvent(name: "label", value: data.label)
-        log("Label: ${data.label}", "DEBUG")
         sendEvent(name: "level", value: Math.round((data.brightness ?: 1) * 100))
-        log("Label: ${Math.round((data.brightness ?: 1) * 100)}", "DEBUG")
         sendEvent(name: "switch.setLevel", value: Math.round((data.brightness ?: 1) * 100))
-        log("Label: ${Math.round((data.brightness ?: 1) * 100)}", "DEBUG")
         sendEvent(name: "switch", value: data.connected ? data.power : "unreachable")
-        sendEvent(name: "color", value: colorUtil.hslToHex((data.color.hue / 3.6) as int, (data.color.saturation * 100) as int))
-        sendEvent(name: "hue", value: data.color.hue / 3.6)
-        sendEvent(name: "saturation", value: data.color.saturation * 100)
-        sendEvent(name: "colorTemperature", value: data.color.kelvin)
-        sendEvent(name: "group", value: "${data.group.name}")
-
         return []
-	}
+    }    
 }
 
 private parseResponsePoll(resp) {
@@ -499,4 +483,10 @@ def getHex(val) {
     } else {
     	return "#ffffff"
     }
+}
+
+def installed() {
+	log("Begin installed().", "DEBUG")
+
+    log("End installed().", "DEBUG")
 }
