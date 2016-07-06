@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *  
  *  You can find the latest version of this device handler @ https://github.com/ericvitale/ST-LIFX-Group-of-Groups
+ *  Review the README for information on how to install @ https://github.com/ericvitale/ST-LIFX-Group-of-Groups/blob/master/README.md
  *  You can find my other device handlers & SmartApps @ https://github.com/ericvitale
  *
  *  Some code borrowed from AdamV & Nicolas Cerveaux
