@@ -186,13 +186,13 @@ def buildGroupList() {
 }
 
 def determineLogLevel(data) {
-	if(data.toUpperCase() == "TRACE") {
+	if(data?.toUpperCase() == "TRACE") {
     	return 0
-    } else if(data.toUpperCase() == "DEBUG") {
+    } else if(data?.toUpperCase() == "DEBUG") {
     	return 1
-    } else if(data.toUpperCase() == "INFO") {
+    } else if(data?.toUpperCase() == "INFO") {
     	return 2
-    } else if(data.toUpperCase() == "WARN") {
+    } else if(data?.toUpperCase() == "WARN") {
     	return 3
     } else {
     	return 4
@@ -325,9 +325,9 @@ private sendMessageToLIFX(path, method="GET", body=null) {
         }
     } catch(Exception e) {
         log(e, "ERROR")
-        if(e?.getMessage().toUpperCase() == "NOT FOUND") {
+        if(e?.getMessage()?.toUpperCase() == "NOT FOUND") {
         	log("LIFX did not understand one of your group names. They need to match what is in your LIFX app and they are case sensitive.", "ERROR")
-        } else if(e?.getMessage().toUpperCase() == "UNAUTHORIZED") {
+        } else if(e?.getMessage()?.toUpperCase() == "UNAUTHORIZED") {
         	log("The API token you entered is not correct and LFIX will not authorize your remote call.", "ERROR")
         }
     }
