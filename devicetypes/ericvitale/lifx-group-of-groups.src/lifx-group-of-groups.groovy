@@ -13,7 +13,6 @@
  *  for the specific language governing permissions and limitations under the License.
  *  
  *  You can find the latest version of this device handler @ https://github.com/ericvitale/ST-LIFX-Group-of-Groups
- *  Review the README for information on how to install @ https://github.com/ericvitale/ST-LIFX-Group-of-Groups/blob/master/README.md
  *  You can find my other device handlers & SmartApps @ https://github.com/ericvitale
  *
  *  Some code borrowed from AdamV & Nicolas Cerveaux
@@ -91,10 +90,6 @@ metadata {
         standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
 			state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
 		}
-        
-        valueTile("colorName", "device.colorName", height: 2, width: 4, inactiveLabel: false, decoration: "flat") {
-            state "colorName", label: '${currentValue}'
-        }
         
         valueTile("colorTemp", "device.colorTemperature", inactiveLabel: false, decoration: "flat", height: 1, width: 2) {
 			state "colorTemp", label: '${currentValue}K'
@@ -225,6 +220,10 @@ def log(data, type) {
     }
 }
 
+def display() {
+	log("DISPLAY", "DEBUG")
+}
+
 def refresh() {
 	log("Begin referesh.", "DEBUG")
     poll()
@@ -236,6 +235,8 @@ def on() {
     buildGroupList()
     sendMessageToLIFX("lights/" + state.groupsList + ",/state", "PUT", "power=on&duration=1")
     sendEvent(name: "switch", value: "on")
+    sendEvent(name: "level", value: "${state.level}")
+    log("state.level = ${state.level}", "DEBUG")
     log("End turning grouops on", "DEBUG")
 }
 
@@ -243,7 +244,9 @@ def off() {
 	log("Begin turning groups off", "DEBUG")
     buildGroupList()
     sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", "power=off&duration=1")
+    sendEvent(name: "level", value: "${state.level}")
     sendEvent(name: "switch", value: "off")
+    log("state.level = ${state.level}", "DEBUG")
     log("End turning groups off", "DEBUG")
 }
 
@@ -267,10 +270,13 @@ def setLevel(value) {
     
     buildGroupList()
 	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["brightness": brightness, "power": "on"])
+    
+    state.level = value
 
     sendEvent(name: "level", value: value)
     sendEvent(name: "switch", value: "on")
     
+    log("state.level = ${state.level}", "DEBUG")
     log("End setting groups level to ${value}.", "DEBUG")
 }
 
@@ -289,6 +295,7 @@ def setColor(value) {
     sendEvent(name: "saturation", value: value.saturation)
     sendEvent(name: "color", value: value.hex)
     sendEvent(name: "switch", value: "on")
+    sendEvent(name: "level", value: "${state.level}")
     
     log("End setting groups color to ${value}.", "DEBUG")
 }
@@ -302,6 +309,7 @@ def setColorTemperature(value) {
 	sendEvent(name: "colorTemperature", value: value)
 	sendEvent(name: "color", value: "#ffffff")
 	sendEvent(name: "saturation", value: 0)
+    sendEvent(name: "level", value: "${state.level}")
     
     log("End setting groups color temperature to ${value}.", "DEBUG")
 }
@@ -424,9 +432,9 @@ def poll() {
     log("End poll.", "DEBUG")
 }
 
-def parse() {
+def parse(desc) {
 	log("Begin parse()", "DEBUG")
-    poll()
+    sendEvent(name: "level", value: state.level)
     log("End parse().", "DEBUG")
 }
 
@@ -461,11 +469,14 @@ def setScene(brightness, temp) {
        
         sendEvent(name: "level", value: brightness)
 	    sendEvent(name: "switch", value: "on")
-       
+        
        if(temp.toLowerCase().startsWith("kelvin:")) {
-	        sendEvent(name: "colorTemperature", value: value)
+       		temp = temp.toLowerCase().minus("kelvin:")
+	        sendEvent(name: "colorTemp", value: temp)
 			sendEvent(name: "color", value: "#ffffff")
 			sendEvent(name: "saturation", value: 0)
+            sendEvent(name: "colorTemperature", value: temp)
+		    sendEvent(name: "level", value: "${state.level}")
         } else {
         	sendEvent(name: "color", value: getHex(temp))
         }
