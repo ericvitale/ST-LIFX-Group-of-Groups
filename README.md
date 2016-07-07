@@ -17,6 +17,17 @@ Setting Brightness
 1 to 10 groups as a single device
 0 to 3 scenes for the group (unfortunatly if you don't use these you cannot remove them from UI via settings)
 
+## Installation via GitHub Integration
+
+## Manual Installation (if that is your thing)
+1. Open SmartThings IDE in your web browser and log into your account.
+2. Click on the "My Device Types" section in the navigation bar.
+3. On your Device Types page, click on the "+ New Device Type" button on the right.
+4 . On the "New Device Type" page, Select the Tab "From Code" , Copy the lifx-group-of-groups.groovy source code from GitHub and paste it into the IDE editor window.
+5. Click the blue "Create" button at the bottom of the page. An IDE editor window containing device handler template should now open.
+6. Click the blue "Save" button above the editor window.
+7. Click the "Publish" button next to it and select "For Me". You have now self-published your Device Handler.
+
 ## Preferences
 1. API Token - [Required] You have to get this from LIFX. It is a long character string so text it to yourself and copy and paste it in.
 2. Groups 1 to 10 - [Required, 1st] You can choose from up to 10 groups, the first group is required. Enter the group name, case sensitive. No need to enter a group id.
