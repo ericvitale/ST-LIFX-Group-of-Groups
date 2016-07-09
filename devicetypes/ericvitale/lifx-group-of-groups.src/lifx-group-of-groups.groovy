@@ -54,7 +54,11 @@ metadata {
             input "scene0${n}Color", "text", title: "Scene ${n} - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
         }
        
-        input "logging", "text", title: "Log Level", required: false, defaultValue: "INFO"
+        input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
+        input "useSchedule", "bool", title: "Use Schedule", required: false, defaultValue: false
+        input "frequency", "number", title: "Frequency?", required: false, defaultValue: 15
+        input "startHour", "number", title: "Schedule Start Hour", required: false, range: "0..23", defaultValue: 7
+        input "endHour", "number", title: "Schedule End Hour", required: false, range: "0..23", defaultValue: 23
     }
 
     simulator {
@@ -126,9 +130,29 @@ metadata {
 
 def groupList =  ""
 
+def installed() {
+	log("Begin installed().", "DEBUG")
+	initialize()
+    log("End installed().", "DEBUG")
+}
+
 def updated() {
-	log("UPDATED", "DEBUG")
+	log("Begin updated().", "DEBUG")
+	initialize()
+    log("End updated().", "DEBUG")
+}
+
+def refresh() {
+	log("Begin referesh().", "DEBUG")
+    poll()
+    log("End refresh().", "DEBUG")
+}
+
+def initialize() {
+	log("Begin initialize.", "DEBUG")
     buildGroupList()
+    setupSchedule()
+	log("End initialize.", "DEBUG")
 }
 
 def buildGroupList() {
@@ -218,16 +242,6 @@ def log(data, type) {
     } catch(e) {
     	log.error "${e}"
     }
-}
-
-def display() {
-	log("DISPLAY", "DEBUG")
-}
-
-def refresh() {
-	log("Begin referesh.", "DEBUG")
-    poll()
-    log("End refresh.", "DEBUG")
 }
 
 def on() {
@@ -507,8 +521,29 @@ def getHex(val) {
     }
 }
 
-def installed() {
-	log("Begin installed().", "DEBUG")
+def setupSchedule() {
+	log("Begin setupSchedule().", "DEBUG")
+    
+    try {
+	    unschedule(refresh)
+    } catch(e) {
+    	log("Failed to unschedule!", "ERROR")
+        log("Exception ${e}", "ERROR")
+        return
+    }
 
-    log("End installed().", "DEBUG")
+	log("useSchedule = ${useSchedule}.", "DEBUG")
+    
+    if(useSchedule) {
+        
+        try {
+        	schedule("17 0/${frequency.toString()} ${startHour.toString()}-${endHour.toString()} * * ?", refresh)
+            log("Refresh scheduled to run every ${frequency.toString()} minutes between hours ${startHour.toString()}-${endHour.toString()}.", "INFO")
+        } catch(e) {
+        	log("Failed to set schedule!", "ERROR")
+            log("Exception ${e}", "ERROR")
+        } 
+    }
+    
+    log("End setupSchedule().", "DEBUG")
 }
