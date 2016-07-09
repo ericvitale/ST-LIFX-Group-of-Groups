@@ -56,7 +56,7 @@ metadata {
        
         input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
         input "useSchedule", "bool", title: "Use Schedule", required: false, defaultValue: false
-        input "frequency", "number", title: "Frequency?", required: false, defaultValue: 15
+        input "frequency", "number", title: "Frequency?", required: false, range: "1..*", defaultValue: 15
         input "startHour", "number", title: "Schedule Start Hour", required: false, range: "0..23", defaultValue: 7
         input "endHour", "number", title: "Schedule End Hour", required: false, range: "0..23", defaultValue: 23
     }
