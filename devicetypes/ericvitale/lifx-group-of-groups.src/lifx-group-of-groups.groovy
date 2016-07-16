@@ -3,7 +3,8 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
- *  Version 1.1.2 - Added these version numbers
+ *  Version 1.1.3 - Updated setLevel(...) to be a bit more efficient and to prevent a possible but unlikely NullPointerException. (07/16/2016)
+ *  Version 1.1.2 - Added these version numbers (07/15/2016)
  *  Version 1.1.1 - Updated auto frequency to accept numbers only 1..* (07/09/2016)
  *  Version 1.1.0 - Added auto refresh (07/09/2016)
  *  Version 1.0.0 - Initial Release (07/06/2016)
@@ -279,8 +280,7 @@ def setLevel(value) {
     
     if (data.level < 1 && data.level > 0) {
 		data.level = 1
-	}
-	if (data.level == 0) {
+	} else if (data.level == 0 || data.level == null) {
 		sendEvent(name: "level", value: 0)
 		return off()
 	}
