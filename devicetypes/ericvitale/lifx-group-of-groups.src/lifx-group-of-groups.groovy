@@ -2,6 +2,11 @@
  *  LIFX Group of Groups
  *
  *  Copyright 2016 ericvitale@gmail.com
+ * 
+ *  Version 1.1.2 - Added these version numbers
+ *  Version 1.1.1 - Updated auto frequency to accept numbers only 1..* (07/09/2016)
+ *  Version 1.1.0 - Added auto refresh (07/09/2016)
+ *  Version 1.0.0 - Initial Release (07/06/2016)
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -341,7 +346,7 @@ private sendMessageToLIFX(path, method="GET", body=null) {
             httpGet(pollParams) { resp ->            
                 parseResponse(resp)
             }
-        }else if(method=="PUT") {
+        } else if(method=="PUT") {
             httpPut(pollParams) { resp ->            
                 parseResponse(resp)
             }
@@ -369,7 +374,7 @@ private sendMessageToLIFXWithResponse(path, method="GET", body=null) {
             httpGet(pollParams) { resp ->            
                 parseResponsePoll(resp)
             }
-        }else if(method=="PUT") {
+        } else if(method=="PUT") {
             httpPut(pollParams) { resp ->            
                 parseResponsePoll(resp)
             }
