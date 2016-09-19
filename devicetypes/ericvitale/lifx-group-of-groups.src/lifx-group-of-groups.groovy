@@ -3,7 +3,12 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
- *  Version 1.1.3 - Updated setLevel(...) to be a bit more efficient and to prevent a possible but unlikely NullPointerException. (07/16/2016)
+ *  Version 1.1.6 - Stability fixes, additional logging, and 2 new scenes. (09/19/2016)
+ *  Version 1.1.5 - Changed lower end of color temperature from 2700K to 2500K per the LIFX spec.
+ *  Version 1.1.4 - Further updated setLevel(...). No longer sends on command so that lights go to level immediatly and 
+ *    not to the previous level. Same for color and color temperature. (07/29/2016)
+ *  Version 1.1.3 - Updated setLevel(...) to be a bit more efficient and to prevent a possible but unlikely 
+ *    NullPointerException. (07/16/2016)
  *  Version 1.1.2 - Added these version numbers (07/15/2016)
  *  Version 1.1.1 - Updated auto frequency to accept numbers only 1..* (07/09/2016)
  *  Version 1.1.0 - Added auto refresh (07/09/2016)
@@ -21,9 +26,7 @@
  *  You can find the latest version of this device handler @ https://github.com/ericvitale/ST-LIFX-Group-of-Groups
  *  You can find my other device handlers & SmartApps @ https://github.com/ericvitale
  *
- *  Some code borrowed from AdamV & Nicolas Cerveaux
- *
- */
+ **/
 
 metadata {
     definition (name: "LIFX Group of Groups", namespace: "ericvitale", author: "ericvitale@gmail.com") {
@@ -43,6 +46,8 @@ metadata {
         command "sceneOne"
         command "sceneTwo"
         command "sceneThree"
+        command "sceneFour"
+        command "sceneFive"
         
         attribute "colorName", "string"
     }
@@ -55,7 +60,7 @@ metadata {
         	input "group0${n}", "text", title: "Group ${n}", required: false
         }
         
-        (1..3).each() { n->
+        (1..5).each() { n->
         	input "scene0${n}Brightness", "number", title: "Scene ${n} - Brightness", required: false
             input "scene0${n}Color", "text", title: "Scene ${n} - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
         }
@@ -89,6 +94,16 @@ metadata {
             }
         }
         
+        multiAttributeTile(name:"switchDetails", type: "lighting", width: 6, height: 4, canChangeIcon: true){
+			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
+				attributeState "on", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#79b821", nextState:"turningOff"
+				attributeState "off", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ffffff", nextState:"turningOn"
+				attributeState "onish", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ff0000", nextState:"turningOn"
+				attributeState "turningOn", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#fffA62", nextState:"turningOff"
+				attributeState "turningOff", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#fffA62", nextState:"turningOn"
+			}
+        }
+        
         valueTile("Brightness", "device.level", width: 2, height: 1) {
         	state "level", label: 'Brightness ${currentValue}%'
         }
@@ -97,15 +112,15 @@ metadata {
         	state "level", action:"switch level.setLevel"
         }
 
-        standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
+        /*standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
 			state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
-		}
+		}*/
         
         valueTile("colorTemp", "device.colorTemperature", inactiveLabel: false, decoration: "flat", height: 1, width: 2) {
 			state "colorTemp", label: '${currentValue}K'
 		}
         
-		controlTile("colorTempSliderControl", "device.colorTemperature", "slider", height: 1, width: 4, inactiveLabel: false, range:"(2700..9000)") {
+		controlTile("colorTempSliderControl", "device.colorTemperature", "slider", height: 1, width: 4, inactiveLabel: false, range:"(2500..9000)") {
 			state "colorTemp", action:"color temperature.setColorTemperature"
 		}
         
@@ -128,9 +143,17 @@ metadata {
         standardTile("sceneThree", "device.sceneThree", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
 			state "default", label:"Scene Three", action:"sceneThree", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
 		}
+        
+        standardTile("sceneFour", "device.sceneFour", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
+			state "default", label:"Scene Four", action:"sceneFour", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
+		}
+        
+        standardTile("sceneFive", "device.sceneFive", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
+			state "default", label:"Scene Five", action:"sceneFive", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
+		}
 
         main(["switch"])
-        details(["switch", "Brightness", "levelSliderControl", "colorTemp", "colorTempSliderControl", "rgbSelector", "poll", "sceneOne", "sceneTwo", "sceneThree", "refresh"])
+        details(["switchDetails", "Brightness", "levelSliderControl", "colorTemp", "colorTempSliderControl", "rgbSelector", "sceneOne", "sceneTwo", "sceneThree", "sceneFour", "sceneFive", "refresh"])
     }
 }
 
@@ -211,60 +234,68 @@ def buildGroupList() {
     log("End method buildGroupList().", "DEBUG")
 }
 
-def determineLogLevel(data) {
-	if(data?.toUpperCase() == "TRACE") {
-    	return 0
-    } else if(data?.toUpperCase() == "DEBUG") {
-    	return 1
-    } else if(data?.toUpperCase() == "INFO") {
-    	return 2
-    } else if(data?.toUpperCase() == "WARN") {
-    	return 3
-    } else {
-    	return 4
+private determineLogLevel(data) {
+    switch (data?.toUpperCase()) {
+        case "TRACE":
+            return 0
+            break
+        case "DEBUG":
+            return 1
+            break
+        case "INFO":
+            return 2
+            break
+        case "WARN":
+            return 3
+            break
+        case "ERROR":
+        	return 4
+            break
+        default:
+            return 1
     }
 }
 
 def log(data, type) {
-    
-    data = "LIFXGoG -- " + data
-    
-    try {
-        if(determineLogLevel(type) >= determineLogLevel(logging)) {
-            if(type?.toUpperCase() == "TRACE") {
+    data = "LIFX-GoG -- ${device.label} -- ${data ?: ''}"
+        
+    if (determineLogLevel(type) >= determineLogLevel(settings?.logging ?: "INFO")) {
+        switch (type?.toUpperCase()) {
+            case "TRACE":
                 log.trace "${data}"
-            } else if(type?.toUpperCase() == "DEBUG") {
+                break
+            case "DEBUG":
                 log.debug "${data}"
-            } else if(type?.toUpperCase() == "INFO") {
+                break
+            case "INFO":
                 log.info "${data}"
-            } else if(type?.toUpperCase() == "WARN") {
+                break
+            case "WARN":
                 log.warn "${data}"
-            } else if(type?.toUpperCase() == "ERROR") {
+                break
+            case "ERROR":
                 log.error "${data}"
-            } else {
-                log.error "LFIXGs -- Invalid Log Setting"
-            }
+                break
+            default:
+                log.error "LIFX-GoG -- ${device.label} -- Invalid Log Setting"
         }
-    } catch(e) {
-    	log.error "${e}"
     }
 }
 
 def on() {
 	log("Begin turning groups on", "DEBUG")
     buildGroupList()
-    sendMessageToLIFX("lights/" + state.groupsList + ",/state", "PUT", "power=on&duration=1")
+    sendMessageToLIFX("lights/" + state.groupsList + ",/state", "PUT", "power=on&duration=0.0")
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "level", value: "${state.level}")
     log("state.level = ${state.level}", "DEBUG")
-    log("End turning grouops on", "DEBUG")
+    log("End turning groups on", "DEBUG")
 }
 
 def off() {
 	log("Begin turning groups off", "DEBUG")
     buildGroupList()
-    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", "power=off&duration=1")
-    sendEvent(name: "level", value: "${state.level}")
+    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", "power=off&duration=0.0")
     sendEvent(name: "switch", value: "off")
     log("state.level = ${state.level}", "DEBUG")
     log("End turning groups off", "DEBUG")
@@ -308,7 +339,7 @@ def setColor(value) {
     data.level = device.currentValue("level")
     
     buildGroupList()
-    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "saturation:${data.saturation / 100}+hue:${data.hue * 3.6}", "power": "on"])
+    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "saturation:${data.saturation / 100}+hue:${data.hue * 3.6}"])
     
     sendEvent(name: "hue", value: value.hue)
     sendEvent(name: "saturation", value: value.saturation)
@@ -323,7 +354,7 @@ def setColorTemperature(value) {
 	log("Begin setting groups color temperature to ${value}.", "DEBUG")
     
     buildGroupList()
-    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "kelvin:${value}", power: "on"])
+	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "kelvin:${value}"])
             
 	sendEvent(name: "colorTemperature", value: value)
 	sendEvent(name: "color", value: "#ffffff")
@@ -398,8 +429,22 @@ private parseResponse(resp) {
 		return []
 	}
     
+    def okResponses = 0
+    
+    resp.data.results.each { it->
+    	if(it.status == "timed_out") {
+        	log("Bulb ${it.label} has timmed out.", "ERROR")
+        } else if(it.status == "ok") {
+        	log("Bulb ${it.label} has updated successfully.", "DEBUG")
+            okResponses++
+        } else if(it.status == "offline") {
+        	log("Bulb ${it.label} is offline.", "ERROR")
+        }
+    }
+    
+	log("${okResponses} of ${resp.data.results.size()} returned ok.", "INFO")
+    
     if(resp.data.results[0] != null) {
-    	log("Results: "+resp.data.results[0], "DEBUG")
         sendEvent(name: "level", value: Math.round((data.brightness ?: 1) * 100))
         sendEvent(name: "switch.setLevel", value: Math.round((data.brightness ?: 1) * 100))
         sendEvent(name: "switch", value: data.connected ? data.power : "unreachable")
@@ -476,6 +521,20 @@ def sceneThree() {
     log("sceneThree(${scene03Brightness}, ${scene03Color}", "DEBUG")
     setScene(scene03Brightness, scene03Color)
 	log("End sceneThree().", "DEBUG")
+}
+
+def sceneFour() {
+	log("Begin sceneFour().", "DEBUG")
+    log("sceneFour(${scene04Brightness}, ${scene04Color}", "DEBUG")
+    setScene(scene04Brightness, scene04Color)
+	log("End sceneFour().", "DEBUG")
+}
+
+def sceneFive() {
+	log("Begin sceneFive().", "DEBUG")
+    log("sceneFive(${scene05Brightness}, ${scene05Color}", "DEBUG")
+    setScene(scene05Brightness, scene05Color)
+	log("End sceneFive().", "DEBUG")
 }
 
 def setScene(brightness, temp) {
