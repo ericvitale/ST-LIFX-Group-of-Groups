@@ -3,7 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
- *  Version 1.1.6 - Stability fixes, additional logging, and 2 new scenes. (09/19/2016)
+ *  Version 1.1.6 - Added support for setLevel(level, duration), setHue, setSaturation. (10/05/2016)
  *  Version 1.1.5 - Changed lower end of color temperature from 2700K to 2500K per the LIFX spec.
  *  Version 1.1.4 - Further updated setLevel(...). No longer sends on command so that lights go to level immediatly and 
  *    not to the previous level. Same for color and color temperature. (07/29/2016)
@@ -50,16 +50,17 @@ metadata {
         command "sceneFive"
         
         attribute "colorName", "string"
+        attribute "lightStatus", "string"
     }
     
     preferences {
     	input "token", "text", title: "API Token", required: true
         
-        input "group01", "text", title: "Group 1", required: true
-     	(2..10).each() { n->
+        input "group01", "text", title: "Group 1", required: true, submitOnChange: true
+     	
+        (2..10).each() { n->
         	input "group0${n}", "text", title: "Group ${n}", required: false
         }
-        
         (1..5).each() { n->
         	input "scene0${n}Brightness", "number", title: "Scene ${n} - Brightness", required: false
             input "scene0${n}Color", "text", title: "Scene ${n} - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
@@ -67,9 +68,11 @@ metadata {
        
         input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
         input "useSchedule", "bool", title: "Use Schedule", required: false, defaultValue: false
-        input "frequency", "number", title: "Frequency?", required: false, range: "1..*", defaultValue: 15
-        input "startHour", "number", title: "Schedule Start Hour", required: false, range: "0..23", defaultValue: 7
-        input "endHour", "number", title: "Schedule End Hour", required: false, range: "0..23", defaultValue: 23
+        
+
+       	input "frequency", "number", title: "Frequency?", required: true, range: "1..*", defaultValue: 15
+        input "startHour", "number", title: "Schedule Start Hour", required: true, range: "0..23", defaultValue: 7
+        input "endHour", "number", title: "Schedule End Hour", required: true, range: "0..23", defaultValue: 23
     }
 
     simulator {
@@ -85,13 +88,17 @@ metadata {
 				attributeState "turningOff", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#fffA62", nextState:"turningOn"
 			}
             
-            tileAttribute ("device.level", key: "SECONDARY_CONTROL") {
+            /*tileAttribute ("device.level", key: "SECONDARY_CONTROL") {
 				attributeState "default", label:'${currentValue}%'
-			}
+			}*/
             
             tileAttribute ("device.level", key: "SLIDER_CONTROL") {
         		attributeState "default", action:"switch level.setLevel"
             }
+            
+            tileAttribute ("device.lightStatus", key: "SECONDARY_CONTROL") {
+				attributeState "default", label:'${currentValue}', action: "refresh.refresh"
+			}
         }
         
         multiAttributeTile(name:"switchDetails", type: "lighting", width: 6, height: 4, canChangeIcon: true){
@@ -101,6 +108,10 @@ metadata {
 				attributeState "onish", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ff0000", nextState:"turningOn"
 				attributeState "turningOn", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#fffA62", nextState:"turningOff"
 				attributeState "turningOff", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#fffA62", nextState:"turningOn"
+			}
+            
+            tileAttribute ("device.lightStatus", key: "SECONDARY_CONTROL") {
+				attributeState "default", label:'${currentValue}', action: "refresh.refresh"
 			}
         }
         
@@ -330,6 +341,36 @@ def setLevel(value) {
     log("End setting groups level to ${value}.", "DEBUG")
 }
 
+def setLevel(value, duration) {
+	log("Begin setting groups level to ${value} over ${duration} seconds.", "DEBUG")
+    
+    def data = [:]
+    data.hue = device.currentValue("hue")
+    data.saturation = device.currentValue("saturation")
+    data.level = value
+    
+    if (data.level < 1 && data.level > 0) {
+		data.level = 1
+	} else if (data.level == 0 || data.level == null) {
+		sendEvent(name: "level", value: 0)
+		return off()
+	}
+    
+    def brightness = data.level / 100
+    def durationSeconds = duration / 1000
+    
+    buildGroupList()
+	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["brightness": brightness, "power": "on", "duration": durationSeconds])
+    
+    state.level = value
+
+    sendEvent(name: "level", value: value)
+    sendEvent(name: "switch", value: "on")
+    
+    log("state.level = ${state.level}", "DEBUG")
+    log("End setting groups level.", "DEBUG")
+}
+
 def setColor(value) {
 	log("Begin setting groups color to ${value}.", "DEBUG")
     
@@ -362,6 +403,33 @@ def setColorTemperature(value) {
     sendEvent(name: "level", value: "${state.level}")
     
     log("End setting groups color temperature to ${value}.", "DEBUG")
+}
+
+def setHue(val) {
+	log("Begin setting groups hue to ${val}.", "DEBUG")
+    
+    buildGroupList()
+    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "hue:${val}"])
+    
+    sendEvent(name: "hue", value: val)
+    sendEvent(name: "switch", value: "on")
+    sendEvent(name: "level", value: "${state.level}")
+    
+    log("End setting groups hue to ${val}.", "DEBUG")
+}
+
+def setSaturation(val) {
+	log("Begin setting groups saturation to ${val}.", "DEBUG")
+    
+    buildGroupList()
+    
+    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "saturation:${val}"])
+    
+    sendEvent(name: "saturation", value: val)
+    sendEvent(name: "switch", value: "on")
+    sendEvent(name: "level", value: "${state.level}")
+    
+    log("End setting groups saturation to ${val}.", "DEBUG")
 }
 
 private sendMessageToLIFX(path, method="GET", body=null) {
@@ -443,6 +511,7 @@ private parseResponse(resp) {
     }
     
 	log("${okResponses} of ${resp.data.results.size()} returned ok.", "INFO")
+    updateLightStatus("${okResponses} of ${resp.data.results.size()}")
     
     if(resp.data.results[0] != null) {
         sendEvent(name: "level", value: Math.round((data.brightness ?: 1) * 100))
@@ -610,4 +679,12 @@ def setupSchedule() {
     }
     
     log("End setupSchedule().", "DEBUG")
+}
+
+def updateLightStatus(lightStatus) {
+	def finalString = lightStatus
+    if(finalString == null) {
+    	finalString = "--"
+    }
+	sendEvent(name: "lightStatus", value: finalString, display: false , displayed: false)
 }
