@@ -25,6 +25,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *  
  *  You can find the latest version of this device handler @ https://github.com/ericvitale/ST-LIFX-Group-of-Groups
+ *  You can find the companion LIFX Sync app @ https://github.com/ericvitale/ST-LIFX-Sync
  *  You can find my other device handlers & SmartApps @ https://github.com/ericvitale
  *
  **/
