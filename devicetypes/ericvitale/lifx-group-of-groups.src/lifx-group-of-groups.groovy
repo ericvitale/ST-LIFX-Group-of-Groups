@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  VERSION 1.1.7 - Added the ability to sync with other groups using the LIFX Sync companion app. (11/8/2016)
  *  Version 1.1.6 - Added support for setLevel(level, duration), setHue, setSaturation. (10/05/2016)
  *  Version 1.1.5 - Changed lower end of color temperature from 2700K to 2500K per the LIFX spec.
  *  Version 1.1.4 - Further updated setLevel(...). No longer sends on command so that lights go to level immediatly and 
@@ -48,6 +49,8 @@ metadata {
         command "sceneThree"
         command "sceneFour"
         command "sceneFive"
+        command "syncOn"
+        command "syncOff"
         
         attribute "colorName", "string"
         attribute "lightStatus", "string"
@@ -293,24 +296,63 @@ def log(data, type) {
     }
 }
 
+def syncOn() {
+	sendEvent(name: "switch", value: "on", data: [syncing: "true"])
+}
+
 def on() {
 	log("Begin turning groups on", "DEBUG")
     buildGroupList()
     sendMessageToLIFX("lights/" + state.groupsList + ",/state", "PUT", "power=on&duration=0.0")
-    sendEvent(name: "switch", value: "on")
+    sendEvent(name: "switch", value: "on", data: [syncing: "false"])
     sendEvent(name: "level", value: "${state.level}")
     log("state.level = ${state.level}", "DEBUG")
     log("End turning groups on", "DEBUG")
 }
 
-def off() {
+/*def on(sync=false) {
+	log("Begin turning groups on", "DEBUG")
+    if(sync == false) {
+        buildGroupList()
+        sendMessageToLIFX("lights/" + state.groupsList + ",/state", "PUT", "power=on&duration=0.0")
+        sendEvent(name: "switch", value: "on", data: [syncing: "false"])
+        sendEvent(name: "level", value: "${state.level}")
+        log("state.level = ${state.level}", "DEBUG")
+    } else {
+    	log("Syncing...", "DEBUG")
+    	sendEvent(name: "switch", value: "on", data: [syncing: "true"])
+        //data: [key1: "ABC"]
+    }
+    
+    log("End turning groups on", "DEBUG")
+}*/
+
+def syncOff() {
+	 sendEvent(name: "switch", value: "off", data: [syncing: "true"])
+}
+
+def off(sync=false) {
 	log("Begin turning groups off", "DEBUG")
     buildGroupList()
     sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", "power=off&duration=0.0")
-    sendEvent(name: "switch", value: "off")
+    sendEvent(name: "switch", value: "off", data: [syncing: "false"])
     log("state.level = ${state.level}", "DEBUG")
     log("End turning groups off", "DEBUG")
 }
+
+/*def off(sync=false) {
+	log("Begin turning groups off", "DEBUG")
+    if(sync == false) {
+        buildGroupList()
+        sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", "power=off&duration=0.0")
+        sendEvent(name: "switch", value: "off", data: [syncing: "false"])
+        log("state.level = ${state.level}", "DEBUG")
+    } else {
+		sendEvent(name: "switch", value: "off", data: [syncing: "true"])
+        log("Syncing...", "DEBUG")
+    }
+    log("End turning groups off", "DEBUG")
+}*/
 
 def setLevel(value) {
 	log("Begin setting groups level to ${value}.", "DEBUG")
@@ -499,6 +541,8 @@ private parseResponse(resp) {
     
     def okResponses = 0
     
+    log("resp = ${resp.data}", "DEBUG")
+    
     resp.data.results.each { it->
     	if(it.status == "timed_out") {
         	log("Bulb ${it.label} has timmed out.", "ERROR")
@@ -513,12 +557,16 @@ private parseResponse(resp) {
 	log("${okResponses} of ${resp.data.results.size()} returned ok.", "INFO")
     updateLightStatus("${okResponses} of ${resp.data.results.size()}")
     
-    if(resp.data.results[0] != null) {
+    /*if(resp.data.results[0] != null) {
+    	def data = resp.data.results[0]
+        log("data.power = ${data.power}", "DEBUG")
+        
         sendEvent(name: "level", value: Math.round((data.brightness ?: 1) * 100))
         sendEvent(name: "switch.setLevel", value: Math.round((data.brightness ?: 1) * 100))
-        sendEvent(name: "switch", value: data.connected ? data.power : "unreachable")
+        //sendEvent(name: "switch", value: data.connected ? data.power : "unreachable")
+        sendEvent(name: "switch", value: data.power)
         return []
-    }    
+    }*/   
 }
 
 private parseResponsePoll(resp) {
@@ -565,9 +613,10 @@ def poll() {
     log("End poll.", "DEBUG")
 }
 
-def parse(desc) {
+def parse(description) {
 	log("Begin parse()", "DEBUG")
-    sendEvent(name: "level", value: state.level)
+	log("description = ${description}.", "DEBUG")
+    //sendEvent(name: "level", value: state.level)
     log("End parse().", "DEBUG")
 }
 
