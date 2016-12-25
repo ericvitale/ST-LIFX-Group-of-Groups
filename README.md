@@ -1,7 +1,7 @@
 # ST-LIFX-Group-of-Groups
 
 ## Summary
-This SmartThings device handler allows you to create a "virtual" device based on a single LIFIX group or a set of LIFX groups. 
+LIFX Group of Groups (LGoG) allows you to create a "virtual" device based on a single LIFX group or a set of LIFX groups.  
 
 Example 1: If you have a group called "Kitchen" and a group called "Dining Room", you can create a group of groups called "First Floor" (or whatever) and add the two LIFX groups to it. You can treat the two groups as a single device. This handles up to 10 groups per device.
 
@@ -10,14 +10,14 @@ Example 2: If you have a single group within the LIFX called "Kitchen" you can a
 This device handler also supports scenes, see the preferences section below.
 
 ## This device handler supports
-On / Off
-Setting Color
-Setting Color Temperature
-Setting Brightness
-Power Reporting
-Syncing Between Groups
-1 to 10 groups as a single device
-0 to 3 scenes for the group (unfortunatly if you don't use these you cannot remove them from UI via settings)
+1. On / Off
+2. Setting Color
+3. Setting Color Temperature
+4. Setting Brightness
+5. Power Reporting
+6. Syncing Between Groups [Must have companion app installed](https://github.com/ericvitale/ST-LIFX-Group-of-Groups/blob/master/smartapps/ericvitale/lifx-sync.src/lifx-sync.groovy)
+7. 1 to 10 groups as a single device
+8. 0 to 5 scenes for the group (unfortunatly if you don't use these you cannot remove them from UI via settings)
 
 ## Installation via GitHub Integration
 1. Open SmartThings IDE in your web browser and log into your account.
@@ -65,11 +65,11 @@ Yes, that is right. You can create multiple groups within the LIFX app and confi
 This comes in handy when you want quick access to all of your light groups in a single “Room” within the SmartThings app, but also want to have the same device inside of the specific Room. For example I have my device “Kitchen Lights” in my Kitchen room and I have another device called “Kitchen Lights 2” which controls the same lights.
 
 ### Sync the Status of your Groups
-As you can create multiple groups that control a device, you can now use the LIFX Sync companion application. Once configured, if you turn on “Kitchen Lights” it will automatically update the status of the “Kitchen Lights 2” device and vis versa. You can also setup the sync to be either one way or two way. 
+As you can create multiple groups that control a device, you can now use the LIFX Sync companion application. Once configured, if you turn on “Kitchen Lights” it will automatically update the status of the “Kitchen Lights 2” device and vis versa. You can also setup the sync to be either one way or two way. [Must have companion app installed](https://github.com/ericvitale/ST-LIFX-Group-of-Groups/blob/master/smartapps/ericvitale/lifx-sync.src/lifx-sync.groovy)
 
-2-way Example: When "Group A" is changed (switch or level) "Group B" is updated. "Group B" is changed then "Group A" is updated to match "Group B".
+1. 2-way Example: When "Group A" is changed (switch or level) "Group B" is updated. "Group B" is changed then "Group A" is updated to match "Group B".
 
-1-way Example: When "Group D" (Group D contains Group A, B, and C) is changed (switch or level), "Group C" is updated. When "Group C" is changed, "Group D" does not get updated.
+2. 1-way Example: When "Group D" (Group D contains Group A, B, and C) is changed (switch or level), "Group C" is updated. When "Group C" is changed, "Group D" does not get updated.
 
 ### Scheduled Sync with LIFX
 Schedule the DH to double check the light status via lifx and update the ST status accordingly.
