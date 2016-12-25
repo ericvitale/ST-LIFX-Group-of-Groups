@@ -14,6 +14,8 @@ On / Off
 Setting Color
 Setting Color Temperature
 Setting Brightness
+Power Reporting
+Syncing Between Groups
 1 to 10 groups as a single device
 0 to 3 scenes for the group (unfortunatly if you don't use these you cannot remove them from UI via settings)
 
@@ -40,21 +42,37 @@ Setting Brightness
 7. Click the "Publish" button next to it and select "For Me". You have now self-published your Device Handler.
 8. See the "Preferences" & "How to get your API Token" sections below on how to configure.
 
-## Preferences
-1. API Token - [Required] You have to get this from LIFX. It is a long character string so text it to yourself and copy and paste it in.
-2. Groups 1 to 10 - [Required, 1st] You can choose from up to 10 groups, the first group is required. Enter the group name, case sensitive. No need to enter a group id.
-3. Scenes 1 to 3 - Select a brightness level and a color (kelvin temperatures should be entered like this: "kelvin:2750" with no quotes.
-3. Log Level - Enter: TRACE, DEBUG, INFO, WARN, ERROR
-
-## Acknowledgements
-Insperation to create this device handler came from AdamV (https://github.com/adampv/smartthings/blob/master/LIFXGroupversion.groovy). Adam also credits Nicolas Cerveaux.
-
 ## How to get your API Token
 Navigate to https://cloud.lifx.com, sign in and then go to the settings section and select generate new token.
 
-## Known Issues
-1. I can't get the UI of the device to update when the state changes without hitting referesh.
+## Additional Feature Information
+LIFX Group of Groups (LGoG) provides the following capabilities through a device handler and an optional companion application (LIFX Sync):
 
-## Design Decisions
-1. I decided to hard code up to 10 groups versus having a single group preference that was comma delimited. The comma delimited version would allow for any number of groups. I opted for the fixed number as I think it is a better user experience for the less technical people out there.
-2. Still trying to decide what I am going to do in the UI when the individual groups or bulbs are not in sync. For example you manually turn on a single bulb or goup using the LIFX app. Right now I show "Onish" if some of the lights are on and some are off.
+### Control a Group of LIFX Bulbs as a Single Device
+This capability is the primary reason I created LGoG. By default, using the LIFX (Connect) app that comes with SmartThings all of your light bulbs will get added to SmartThings. If you have 1 bulb, this is likely just fine for you, however if you have many bulb, specifically bulbs you would like to control as a single device you are out of luck. Before LGoG you had to either download a SmartApp that would watch your bulbs and update the status of some of your bulbs based on the status of a master bulb or control them through CoRE (which you can still do with LGoG, however you are stuck selecting multiple lightbulbs.  Specifically how LGoG works is...
+
+1 - Create the groups of lights in your LIFX app. Yea, I know you can’t have a bulb in multiple groups, but LGoG fixes that! 
+2 - Generate and API key, instructions below.
+3 - Install the LGoG device handler.
+4 - Configure the device, add a single group or multiple groups.
+
+Why is this better? It is more efficient. Let’s say you have a kitchen which as 10 LIFX bulbs in it. If you use the standard bulbs that ST gives you, if you want to turn them all on you have to turn 10 bulbs on. Weather you do it one by one manually, use a syncing app, or use CoRE, you are sending 10 commands to LIFX and then 10 commands back to your bulbs. Using LGoG you send a single command to LIFX and they in turn send a single command to your bulbs. You will find that your groups will become much more reliable.
+
+### Control Multiple Groups of LIFX Bulbs as a Single Device
+Yes, that is right. You can create multiple groups within the LIFX app and configure this device handler to control multiple groups as a single device. For example, I have bulbs in my kitchen, dining room, foyer, & family room. I have 1 device setup in SmartThings to control each of these (so 4 in total) and another device configured to control all of these groups as a single device called “First Floor Lights”.
+
+### Create Multiple Devices for the Same Group or Set of Groups
+This comes in handy when you want quick access to all of your light groups in a single “Room” within the SmartThings app, but also want to have the same device inside of the specific Room. For example I have my device “Kitchen Lights” in my Kitchen room and I have another device called “Kitchen Lights 2” which controls the same lights.
+
+### Sync the Status of your Groups
+As you can create multiple groups that control a device, you can now use the LIFX Sync companion application. Once configured, if you turn on “Kitchen Lights” it will automatically update the status of the “Kitchen Lights 2” device and vis versa. You can also setup the sync to be either one way or two way. 
+
+2-way Example: When "Group A" is changed (switch or level) "Group B" is updated. "Group B" is changed then "Group A" is updated to match "Group B".
+
+1-way Example: When "Group D" (Group D contains Group A, B, and C) is changed (switch or level), "Group C" is updated. When "Group C" is changed, "Group D" does not get updated.
+
+### Scheduled Sync with LIFX
+Schedule the DH to double check the light status via lifx and update the ST status accordingly.
+
+### Power Usage Reporting
+Report power usage based on the number of bulbs in a group. This was all based on real world testing as accurate as I could get.
