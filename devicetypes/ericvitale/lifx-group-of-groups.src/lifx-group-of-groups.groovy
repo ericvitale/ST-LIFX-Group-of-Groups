@@ -3,7 +3,8 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
- *  VERSION 1.1.7 - Added the ability to sync with other groups using the LIFX Sync companion app. (11/8/2016)
+ *  Version 1.1.8 - Added the power meter ability. (12/15/2016)
+ *  Version 1.1.7 - Added the ability to sync with other groups using the LIFX Sync companion app. (11/8/2016)
  *  Version 1.1.6 - Added support for setLevel(level, duration), setHue, setSaturation. (10/05/2016)
  *  Version 1.1.5 - Changed lower end of color temperature from 2700K to 2500K per the LIFX spec.
  *  Version 1.1.4 - Further updated setLevel(...). No longer sends on command so that lights go to level immediatly and 
@@ -40,6 +41,7 @@ metadata {
 		capability "Color Temperature"
 		capability "Actuator"
         capability "Sensor"
+        capability "Power Meter"
         
         command "setAdjustedColor"
         command "setColor"
@@ -55,10 +57,15 @@ metadata {
         
         attribute "colorName", "string"
         attribute "lightStatus", "string"
+        attribute "powerUsageText", "string"
     }
     
     preferences {
     	input "token", "text", title: "API Token", required: true
+        
+        input "numberOfBulbs", "number", title: "Number of Bulbs", required: true, defaultValue: 0
+        input "maxWatts", "decimal", title: "Number of Watts @ 100%", required: true, defaultValue: 11.0
+        input "powerReportMinutes", "number", title: "Report every X minutes?", required: true, defaultValue: 1
         
         input "group01", "text", title: "Group 1", required: true, submitOnChange: true
      	
@@ -72,8 +79,6 @@ metadata {
        
         input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
         input "useSchedule", "bool", title: "Use Schedule", required: false, defaultValue: false
-        
-
        	input "frequency", "number", title: "Frequency?", required: true, range: "1..*", defaultValue: 15
         input "startHour", "number", title: "Schedule Start Hour", required: true, range: "0..23", defaultValue: 7
         input "endHour", "number", title: "Schedule End Hour", required: true, range: "0..23", defaultValue: 23
@@ -126,10 +131,6 @@ metadata {
         controlTile("levelSliderControl", "device.level", "slider", width: 4, height: 1) {
         	state "level", action:"switch level.setLevel"
         }
-
-        /*standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
-			state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
-		}*/
         
         valueTile("colorTemp", "device.colorTemperature", inactiveLabel: false, decoration: "flat", height: 1, width: 2) {
 			state "colorTemp", label: '${currentValue}K'
@@ -167,8 +168,12 @@ metadata {
 			state "default", label:"Scene Five", action:"sceneFive", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
 		}
 
+        valueTile("PowerUsage", "device.powerUsageText", width: 4, height: 1) {
+        	state "default", label: '${currentValue}'
+        }
+
         main(["switch"])
-        details(["switchDetails", "Brightness", "levelSliderControl", "colorTemp", "colorTempSliderControl", "rgbSelector", "sceneOne", "sceneTwo", "sceneThree", "sceneFour", "sceneFive", "refresh"])
+        details(["switchDetails", "Brightness", "levelSliderControl", "colorTemp", "colorTempSliderControl", "rgbSelector", "sceneOne", "sceneTwo", "sceneThree", "sceneFour", "sceneFive", "refresh", "PowerUsage"])
     }
 }
 
@@ -194,8 +199,19 @@ def refresh() {
 
 def initialize() {
 	log("Begin initialize.", "DEBUG")
+    unschedule()
     buildGroupList()
     setupSchedule()
+    
+    if(powerReportMinutes > 0 && numberOfBulbs > 0) {
+	    schedule("0 0/${powerReportMinutes} * * * ?", reportPowerUsage)
+        reportPowerUsage()
+    }
+    
+    log("Number of Bulbs = ${numberOfBulbs}.", "INFO")
+    log("Max Watts per bulb = ${maxWatts}.", "INFO")
+    log("Report every ${powerReportMinutes} minutes.", "INFO")
+    
 	log("End initialize.", "DEBUG")
 }
 
@@ -299,6 +315,7 @@ def log(data, type) {
 
 def syncOn() {
 	sendEvent(name: "switch", value: "on", data: [syncing: "true"])
+    reportPowerUsage()
 }
 
 def on() {
@@ -307,29 +324,14 @@ def on() {
     sendMessageToLIFX("lights/" + state.groupsList + ",/state", "PUT", "power=on&duration=0.0")
     sendEvent(name: "switch", value: "on", data: [syncing: "false"])
     sendEvent(name: "level", value: "${state.level}")
+    reportPowerUsage()
     log("state.level = ${state.level}", "DEBUG")
     log("End turning groups on", "DEBUG")
 }
 
-/*def on(sync=false) {
-	log("Begin turning groups on", "DEBUG")
-    if(sync == false) {
-        buildGroupList()
-        sendMessageToLIFX("lights/" + state.groupsList + ",/state", "PUT", "power=on&duration=0.0")
-        sendEvent(name: "switch", value: "on", data: [syncing: "false"])
-        sendEvent(name: "level", value: "${state.level}")
-        log("state.level = ${state.level}", "DEBUG")
-    } else {
-    	log("Syncing...", "DEBUG")
-    	sendEvent(name: "switch", value: "on", data: [syncing: "true"])
-        //data: [key1: "ABC"]
-    }
-    
-    log("End turning groups on", "DEBUG")
-}*/
-
 def syncOff() {
 	 sendEvent(name: "switch", value: "off", data: [syncing: "true"])
+     reportPowerUsage()
 }
 
 def off(sync=false) {
@@ -337,23 +339,10 @@ def off(sync=false) {
     buildGroupList()
     sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", "power=off&duration=0.0")
     sendEvent(name: "switch", value: "off", data: [syncing: "false"])
+    reportPowerUsage()
     log("state.level = ${state.level}", "DEBUG")
     log("End turning groups off", "DEBUG")
 }
-
-/*def off(sync=false) {
-	log("Begin turning groups off", "DEBUG")
-    if(sync == false) {
-        buildGroupList()
-        sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", "power=off&duration=0.0")
-        sendEvent(name: "switch", value: "off", data: [syncing: "false"])
-        log("state.level = ${state.level}", "DEBUG")
-    } else {
-		sendEvent(name: "switch", value: "off", data: [syncing: "true"])
-        log("Syncing...", "DEBUG")
-    }
-    log("End turning groups off", "DEBUG")
-}*/
 
 def setLevel(value) {
 	log("Begin setting groups level to ${value}.", "DEBUG")
@@ -367,6 +356,7 @@ def setLevel(value) {
 		data.level = 1
 	} else if (data.level == 0 || data.level == null) {
 		sendEvent(name: "level", value: 0)
+        reportPowerUsage()
 		return off()
 	}
     
@@ -379,6 +369,7 @@ def setLevel(value) {
 
     sendEvent(name: "level", value: value)
     sendEvent(name: "switch", value: "on")
+    reportPowerUsage()
     
     log("state.level = ${state.level}", "DEBUG")
     log("End setting groups level to ${value}.", "DEBUG")
@@ -396,6 +387,7 @@ def setLevel(value, duration) {
 		data.level = 1
 	} else if (data.level == 0 || data.level == null) {
 		sendEvent(name: "level", value: 0)
+        reportPowerUsage()
 		return off()
 	}
     
@@ -409,6 +401,7 @@ def setLevel(value, duration) {
 
     sendEvent(name: "level", value: value)
     sendEvent(name: "switch", value: "on")
+    reportPowerUsage()
     
     log("state.level = ${state.level}", "DEBUG")
     log("End setting groups level.", "DEBUG")
@@ -430,6 +423,7 @@ def setColor(value) {
     sendEvent(name: "color", value: value.hex)
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "level", value: "${state.level}")
+    reportPowerUsage()
     
     log("End setting groups color to ${value}.", "DEBUG")
 }
@@ -444,6 +438,7 @@ def setColorTemperature(value) {
 	sendEvent(name: "color", value: "#ffffff")
 	sendEvent(name: "saturation", value: 0)
     sendEvent(name: "level", value: "${state.level}")
+    reportPowerUsage()
     
     log("End setting groups color temperature to ${value}.", "DEBUG")
 }
@@ -457,6 +452,7 @@ def setHue(val) {
     sendEvent(name: "hue", value: val)
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "level", value: "${state.level}")
+    reportPowerUsage()
     
     log("End setting groups hue to ${val}.", "DEBUG")
 }
@@ -471,6 +467,7 @@ def setSaturation(val) {
     sendEvent(name: "saturation", value: val)
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "level", value: "${state.level}")
+    reportPowerUsage()
     
     log("End setting groups saturation to ${val}.", "DEBUG")
 }
@@ -556,18 +553,7 @@ private parseResponse(resp) {
     }
     
 	log("${okResponses} of ${resp.data.results.size()} returned ok.", "INFO")
-    updateLightStatus("${okResponses} of ${resp.data.results.size()}")
-    
-    /*if(resp.data.results[0] != null) {
-    	def data = resp.data.results[0]
-        log("data.power = ${data.power}", "DEBUG")
-        
-        sendEvent(name: "level", value: Math.round((data.brightness ?: 1) * 100))
-        sendEvent(name: "switch.setLevel", value: Math.round((data.brightness ?: 1) * 100))
-        //sendEvent(name: "switch", value: data.connected ? data.power : "unreachable")
-        sendEvent(name: "switch", value: data.power)
-        return []
-    }*/   
+    updateLightStatus("${okResponses} of ${resp.data.results.size()}")  
 }
 
 private parseResponsePoll(resp) {
@@ -596,12 +582,15 @@ private parseResponsePoll(resp) {
     if(anyOn && anyOff) {
     	log("Some lights on, some off.", "DEBUG")
         sendEvent(name: "switch", value: "onish")
+        reportPowerUsage()
     } else if(anyOn && !anyOff) {
     	log("All lights on.", "DEBUG")
 		sendEvent(name: "switch", value: "on")
+        reportPowerUsage()
     } else {
     	log("All lights off.", "DEBUG")
         sendEvent(name: "switch", value: "off")
+        reportPowerUsage()
     }
 }
 
@@ -666,6 +655,7 @@ def setScene(brightness, temp) {
        
         sendEvent(name: "level", value: brightness)
 	    sendEvent(name: "switch", value: "on")
+        reportPowerUsage()
         
        if(temp.toLowerCase().startsWith("kelvin:")) {
        		temp = temp.toLowerCase().minus("kelvin:")
@@ -737,4 +727,47 @@ def updateLightStatus(lightStatus) {
     	finalString = "--"
     }
 	sendEvent(name: "lightStatus", value: finalString, display: false , displayed: false)
+}
+
+def determinePowerUsage() {
+	
+    log("switch = ${device.currentValue('switch')}.", "DEBUG")
+    log("level = ${state.level}.", "DEBUG")
+    
+    def val = 0.0
+
+    if(device.currentValue("switch") == "off") {
+    	val =  0.7
+    } else {
+        if(state.level <= 100 && state.level >= 90) {
+            val = (maxWatts * (1 - ((100 - state.level) * 0.02)))
+        } else if(state.level < 90 && state.level >= 80) {
+            val = maxWatts * (0.8 - ((90 - state.level) * 0.015))
+        } else if(state.level < 80 && state.level >= 70) {
+            val = maxWatts * (0.65 - ((80 - state.level) * 0.015))
+        } else if(state.level < 70 && state.level >= 60) {
+            val = maxWatts * (0.5 - ((70 - state.level) * 0.0135))
+        } else if(state.level < 60 && state.level >= 50) {
+            val = (maxWatts * (0.365 - ((60 - state.level) * 0.0145)))
+        } else if(state.level < 50 && state.level >= 40) {
+            val = (maxWatts * (0.22 - ((50 - state.level) * 0.0075)))
+        } else {
+            val = maxWatts / 11.0
+        }
+    }
+    
+    log("Power Reported: ${val * numberOfBulbs} watts or ${val} watts per bulb.", "INFO")
+    log("val = ${val * numberOfBulbs}.", "DEBUG")
+    return val * numberOfBulbs
+}
+
+def reportPowerUsage() {
+	if(numberOfBulbs > 0) {
+	def usage = determinePowerUsage()
+	log("Power usage = ${usage}", "INFO")
+	sendEvent(name: "power", value: "${usage}")
+    sendEvent(name: "powerUsageText", value: "${usage}W, ${usage / numberOfBulbs}W per bulb (${numberOfBulbs}).")
+    } else {
+ 		log("Power usage reporting turned off.", "DEBUG")   
+    }
 }
