@@ -51,10 +51,10 @@ LIFX Group of Groups (LGoG) provides the following capabilities through a device
 ### Control a Group of LIFX Bulbs as a Single Device
 This capability is the primary reason I created LGoG. By default, using the LIFX (Connect) app that comes with SmartThings all of your light bulbs will get added to SmartThings. If you have 1 bulb, this is likely just fine for you, however if you have many bulb, specifically bulbs you would like to control as a single device you are out of luck. Before LGoG you had to either download a SmartApp that would watch your bulbs and update the status of some of your bulbs based on the status of a master bulb or control them through CoRE (which you can still do with LGoG, however you are stuck selecting multiple lightbulbs.  Specifically how LGoG works is...
 
-1 - Create the groups of lights in your LIFX app. Yea, I know you can’t have a bulb in multiple groups, but LGoG fixes that! 
-2 - Generate and API key, instructions below.
-3 - Install the LGoG device handler.
-4 - Configure the device, add a single group or multiple groups.
+1. Create the groups of lights in your LIFX app. Yea, I know you can’t have a bulb in multiple groups, but LGoG fixes that! 
+2. Generate and API key, instructions below.
+3. Install the LGoG device handler.
+4. Configure the device, add a single group or multiple groups.
 
 Why is this better? It is more efficient. Let’s say you have a kitchen which as 10 LIFX bulbs in it. If you use the standard bulbs that ST gives you, if you want to turn them all on you have to turn 10 bulbs on. Weather you do it one by one manually, use a syncing app, or use CoRE, you are sending 10 commands to LIFX and then 10 commands back to your bulbs. Using LGoG you send a single command to LIFX and they in turn send a single command to your bulbs. You will find that your groups will become much more reliable.
 
