@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  Version 1.1.9 - Android fix...testing.
  *  Version 1.1.8 - Added the power meter ability. (12/15/2016)
  *  Version 1.1.7 - Added the ability to sync with other groups using the LIFX Sync companion app. (11/8/2016)
  *  Version 1.1.6 - Added support for setLevel(level, duration), setHue, setSaturation. (10/05/2016)
@@ -67,15 +68,38 @@ metadata {
         input "maxWatts", "decimal", title: "Number of Watts @ 100%", required: true, defaultValue: 11.0
         input "powerReportMinutes", "number", title: "Report every X minutes?", required: true, defaultValue: 1
         
-        input "group01", "text", title: "Group 1", required: true, submitOnChange: true
+        input "group01", "text", title: "Group 1", required: true
+        input "group02", "text", title: "Group 2", required: true
+        input "group03", "text", title: "Group 3", required: true
+        input "group04", "text", title: "Group 4", required: true
+        input "group05", "text", title: "Group 5", required: true
+        input "group06", "text", title: "Group 6", required: true
+        input "group07", "text", title: "Group 7", required: true
+        input "group08", "text", title: "Group 8", required: true
+        input "group09", "text", title: "Group 9", required: true
+        input "group10", "text", title: "Group 10", required: true
      	
-        (2..10).each() { n->
+        /*(2..10).each() { n->
         	input "group0${n}", "text", title: "Group ${n}", required: false
-        }
-        (1..5).each() { n->
+        }*/
+        
+        input "scene01Brightness", "number", title: "Scene 1 - Brightness", required: false
+        input "scene01Color", "text", title: "Scene 1 - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
+        input "scene02Brightness", "number", title: "Scene 2 - Brightness", required: false
+        input "scene02Color", "text", title: "Scene 2 - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
+        input "scene03Brightness", "number", title: "Scene 3 - Brightness", required: false
+        input "scene03Color", "text", title: "Scene 3 - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
+        input "scene04Brightness", "number", title: "Scene 4 - Brightness", required: false
+        input "scene04Color", "text", title: "Scene 4 - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
+        input "scene05Brightness", "number", title: "Scene 5 - Brightness", required: false
+        input "scene05Color", "text", title: "Scene 5 - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
+        
+        /*(1..5).each() { n->
         	input "scene0${n}Brightness", "number", title: "Scene ${n} - Brightness", required: false
             input "scene0${n}Color", "text", title: "Scene ${n} - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
-        }
+        }*/
+        
+        
        
         input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
         input "useSchedule", "bool", title: "Use Schedule", required: false, defaultValue: false
