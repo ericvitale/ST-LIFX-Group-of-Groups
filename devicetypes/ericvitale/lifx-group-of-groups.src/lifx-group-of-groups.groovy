@@ -69,15 +69,15 @@ metadata {
         input "powerReportMinutes", "number", title: "Report every X minutes?", required: true, defaultValue: 1
         
         input "group01", "text", title: "Group 1", required: true
-        input "group02", "text", title: "Group 2", required: true
-        input "group03", "text", title: "Group 3", required: true
-        input "group04", "text", title: "Group 4", required: true
-        input "group05", "text", title: "Group 5", required: true
-        input "group06", "text", title: "Group 6", required: true
-        input "group07", "text", title: "Group 7", required: true
-        input "group08", "text", title: "Group 8", required: true
-        input "group09", "text", title: "Group 9", required: true
-        input "group10", "text", title: "Group 10", required: true
+        input "group02", "text", title: "Group 2", required: false
+        input "group03", "text", title: "Group 3", required: false
+        input "group04", "text", title: "Group 4", required: false
+        input "group05", "text", title: "Group 5", required: false
+        input "group06", "text", title: "Group 6", required: false
+        input "group07", "text", title: "Group 7", required: false
+        input "group08", "text", title: "Group 8", required: false
+        input "group09", "text", title: "Group 9", required: false
+        input "group10", "text", title: "Group 10", required: false
      	
         /*(2..10).each() { n->
         	input "group0${n}", "text", title: "Group ${n}", required: false
