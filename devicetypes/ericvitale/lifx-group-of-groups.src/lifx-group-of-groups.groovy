@@ -64,11 +64,11 @@ metadata {
     preferences {
     	input "token", "text", title: "API Token", required: false
         
-        input "numberOfBulbs", "number", title: "Number of Bulbs", required: false, defaultValue: 0
-        input "maxWatts", "decimal", title: "Number of Watts @ 100%", required: false, defaultValue: 11.0
-        input "powerReportMinutes", "number", title: "Report every X minutes?", required: false, defaultValue: 1
+        input "numberOfBulbs", "number", title: "Number of Bulbs", required: true, defaultValue: 1
+        input "maxWatts", "decimal", title: "Number of Watts @ 100%", required: true, defaultValue: 11.0
+        input "powerReportMinutes", "number", title: "Report every X minutes?", required: true, defaultValue: 1
         
-        input "group01", "text", title: "Group 1", required: false
+        input "group01", "text", title: "Group 1", required: true
         input "group02", "text", title: "Group 2", required: false
         input "group03", "text", title: "Group 3", required: false
         input "group04", "text", title: "Group 4", required: false
@@ -90,11 +90,11 @@ metadata {
         input "scene05Brightness", "number", title: "Scene 5 - Brightness", required: false
         input "scene05Color", "text", title: "Scene 5 - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
        
-        input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
-        input "useSchedule", "bool", title: "Use Schedule", required: false, defaultValue: false
-       	input "frequency", "number", title: "Frequency?", required: false, range: "1..*", defaultValue: 15
-        input "startHour", "number", title: "Schedule Start Hour", required: false, range: "0..23", defaultValue: 7
-        input "endHour", "number", title: "Schedule End Hour", required: false, range: "0..23", defaultValue: 23
+        input "logging", "enum", title: "Log Level", required: true, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
+        input "useSchedule", "bool", title: "Use Schedule", required: true, defaultValue: false
+       	input "frequency", "number", title: "Frequency?", required: true, range: "1..*", defaultValue: 15
+        input "startHour", "number", title: "Schedule Start Hour", required: true, range: "0..23", defaultValue: 7
+        input "endHour", "number", title: "Schedule End Hour", required: true, range: "0..23", defaultValue: 23
     }
 
     simulator {
