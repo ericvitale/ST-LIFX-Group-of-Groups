@@ -3,6 +3,8 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  Version 1.2.0 - Added the ability to execute the pulse and breathe command via CoRE or webCoRE using runEffect(effect="pulse", color="blue", from_color="red", cycles=5, period=0.5). (05/13/2017)
+ *  Version 1.1.9 - Added custom command for runEffect and the ability to use "all" as a group. (05/07/2017)
  *  Version 1.1.8 - Added the power meter ability. (12/15/2016)
  *  Version 1.1.7 - Added the ability to sync with other groups using the LIFX Sync companion app. (11/8/2016)
  *  Version 1.1.6 - Added support for setLevel(level, duration), setHue, setSaturation. (10/05/2016)
@@ -54,6 +56,7 @@ metadata {
         command "sceneFive"
         command "syncOn"
         command "syncOff"
+        command "runEffect"
         
         attribute "colorName", "string"
         attribute "lightStatus", "string"
@@ -67,7 +70,7 @@ metadata {
         input "maxWatts", "decimal", title: "Number of Watts @ 100%", required: true, defaultValue: 11.0
         input "powerReportMinutes", "number", title: "Report every X minutes?", required: true, defaultValue: 1
         
-        input "group01", "text", title: "Group 1", required: true, submitOnChange: true
+        input "group01", "text", title: "Group 1", required: true//, submitOnChange: true
      	
         (2..10).each() { n->
         	input "group0${n}", "text", title: "Group ${n}", required: false
@@ -219,7 +222,13 @@ def buildGroupList() {
 	log("Begin method buildGroupList().", "DEBUG")
 
     try {
-        state.groupsList = "group:" + group01 + ","
+        
+        if(group01.toUpperCase() == "ALL") {
+        	state.groupsList = "all"
+            return
+        } else {
+	        state.groupsList = "group:" + group01 + ","
+        }
         
         if(group02 != null) {
         	state.groupsList = state.groupsList + "group:" + group02 + ","
@@ -321,7 +330,8 @@ def syncOn() {
 def on() {
 	log("Begin turning groups on", "DEBUG")
     buildGroupList()
-    sendMessageToLIFX("lights/" + state.groupsList + ",/state", "PUT", "power=on&duration=0.0")
+    log("The group list is ${state.groupList}.", "DEBUG")
+    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", "power=on&duration=0.0")
     sendEvent(name: "switch", value: "on", data: [syncing: "false"])
     sendEvent(name: "level", value: "${state.level}")
     reportPowerUsage()
@@ -337,6 +347,7 @@ def syncOff() {
 def off(sync=false) {
 	log("Begin turning groups off", "DEBUG")
     buildGroupList()
+    log("The group list is ${state.groupList}.", "DEBUG")
     sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", "power=off&duration=0.0")
     sendEvent(name: "switch", value: "off", data: [syncing: "false"])
     reportPowerUsage()
@@ -480,6 +491,8 @@ private sendMessageToLIFX(path, method="GET", body=null) {
         body: body
     ]
     
+    log("URL = ${path}", "DEBUG")
+    
     try {
         if(method=="GET") {
             httpGet(pollParams) { resp ->            
@@ -487,6 +500,10 @@ private sendMessageToLIFX(path, method="GET", body=null) {
             }
         } else if(method=="PUT") {
             httpPut(pollParams) { resp ->            
+                parseResponse(resp)
+            }
+        } else if(method=="POST") {
+            httpPost(pollParams) { resp ->            
                 parseResponse(resp)
             }
         }
@@ -671,6 +688,20 @@ def setScene(brightness, temp) {
     
     log("End setScene(...)", "DEBUG")
 }
+
+def runEffect(effect="pulse", color="blue", from_color="red", cycles=5, period=0.5) {
+	log("runEffect(effect=${effect}, color=${color}, from_color=${from_color}, cycles=${cycles}, period=${period}.", "INFO")
+
+	if(effect != "pulse" && effect != "breathe") {
+    	log("${effect} is not a value effect, defaulting to pulse.", "ERROR")
+        effect = "pulse"
+    }
+	
+    buildGroupList()
+    log("The Group is: ${state.groupsList}", "DEBUG")
+    sendMessageToLIFX("lights/${state.groupList}/effects/${effect}", "POST", ["color" : "${color.toLowerCase()}", "from_color" : "${from_color.toLowerCase()}", "cycles" : "${cycles}" ,"period" : "${period}"])
+}
+
 
 def getHex(val) {
 	if(val.toLowerCase() == "red") {
