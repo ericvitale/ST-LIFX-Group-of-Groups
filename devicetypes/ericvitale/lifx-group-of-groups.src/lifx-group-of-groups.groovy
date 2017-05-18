@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  Version 1.2.1 - Fixed an issue with poll not sending the correct group list to LIFX, they must have changed the api. (05/18/2017)
  *  Version 1.2.0 - Added the ability to execute the pulse and breathe command via CoRE or webCoRE using runEffect(effect="pulse", color="blue", from_color="red", cycles=5, period=0.5). (05/13/2017)
  *  Version 1.1.9 - Added custom command for runEffect and the ability to use "all" as a group. (05/07/2017)
  *  Version 1.1.8 - Added the power meter ability. (12/15/2016)
@@ -227,43 +228,43 @@ def buildGroupList() {
         	state.groupsList = "all"
             return
         } else {
-	        state.groupsList = "group:" + group01 + ","
+	        state.groupsList = "group:" + group01
         }
         
         if(group02 != null) {
-        	state.groupsList = state.groupsList + "group:" + group02 + ","
+        	state.groupsList = "," + state.groupsList + "group:" + group02
         }
         
         if(group03 != null) {
-            state.groupsList = state.groupsList + "group:" + group03 + ","
+            state.groupsList = "," + state.groupsList + "group:" + group03
         }
         
         if(group04 != null) {
-			state.groupsList = state.groupsList + "group:" + group04 + ","
+			state.groupsList = "," + state.groupsList + "group:" + group04
         }
         
         if(group05 != null) {
-            state.groupsList = state.groupsList + "group:" + group05 + ","
+            state.groupsList = "," + state.groupsList + "group:" + group05
         }
                 
         if(group06 != null) {
-            state.groupsList = state.groupsList + "group:" + group06 + ","
+            state.groupsList = "," + state.groupsList + "group:" + group06
         }
         
         if(group07 != null) {
-            state.groupsList = state.groupsList + "group:" + group07 + ","
+            state.groupsList = "," + state.groupsList + "group:" + group07
         }
         
         if(group08 != null) {
-            state.groupsList = state.groupsList + "group:" + group08 + ","
+            state.groupsList = "," + state.groupsList + "group:" + group08
         }
         
         if(group09 != null) {
-            state.groupsList = state.groupsList + "group:" + group09 + ","
+            state.groupsList = "," + state.groupsList + "group:" + group09
         }
         
         if(group10 != null) {
-            state.groupsList = state.groupsList + "group:" + group10 + ","
+            state.groupsList = "," + state.groupsList + "group:" + group10
         }
     } catch(e) {
     	log(e, "ERROR")
@@ -525,6 +526,8 @@ private sendMessageToLIFXWithResponse(path, method="GET", body=null) {
         body: body
     ]
     
+    log("path = ${path}", "DEBUG")
+    
     try {
         if(method=="GET") {
             httpGet(pollParams) { resp ->            
@@ -668,7 +671,7 @@ def setScene(brightness, temp) {
     if(brightness != null && temp != null) {
     	def brightnessValue = brightness / 100
     	buildGroupList()
-   	 	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["color" : "${temp.toLowerCase()}", "brightness" : "${brightnessValue}" ,"power" : "on"])
+   	 	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["color" : "${temp.toLowerCase()}+", "brightness" : "${brightnessValue}" ,"power" : "on"])
        
         sendEvent(name: "level", value: brightness)
 	    sendEvent(name: "switch", value: "on")
@@ -689,8 +692,8 @@ def setScene(brightness, temp) {
     log("End setScene(...)", "DEBUG")
 }
 
-def runEffect(effect="pulse", color="blue", from_color="red", cycles=5, period=0.5) {
-	log("runEffect(effect=${effect}, color=${color}, from_color=${from_color}, cycles=${cycles}, period=${period}.", "INFO")
+def runEffect(effect="pulse", color="blue", from_color="red", cycles=5, period=0.5, brightness=0.5) {
+	log("runEffect(effect=${effect}, color=${color}: 1.0, from_color=${from_color}, cycles=${cycles}, period=${period}, brightness=${brightness}.", "INFO")
 
 	if(effect != "pulse" && effect != "breathe") {
     	log("${effect} is not a value effect, defaulting to pulse.", "ERROR")
@@ -699,7 +702,7 @@ def runEffect(effect="pulse", color="blue", from_color="red", cycles=5, period=0
 	
     buildGroupList()
     log("The Group is: ${state.groupsList}", "DEBUG")
-    sendMessageToLIFX("lights/${state.groupList}/effects/${effect}", "POST", ["color" : "${color.toLowerCase()}", "from_color" : "${from_color.toLowerCase()}", "cycles" : "${cycles}" ,"period" : "${period}"])
+    sendMessageToLIFX("lights/${state.groupsList}/effects/${effect}", "POST", ["color" : "${color.toLowerCase()}+brightness:${brightness}", "from_color" : "${from_color.toLowerCase()}+brightness:${brightness}", "cycles" : "${cycles}" ,"period" : "${period}"])
 }
 
 
