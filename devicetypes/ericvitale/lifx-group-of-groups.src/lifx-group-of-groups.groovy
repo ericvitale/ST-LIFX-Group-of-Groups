@@ -704,7 +704,7 @@ def runEffect(effect="pulse", color="blue", from_color="red", cycles=5, period=0
 	
     buildGroupList()
     log("The Group is: ${state.groupsList}", "DEBUG")
-    sendMessageToLIFX("lights/${state.groupsList}/effects/${effect}", "POST", ["color" : "${color.toLowerCase()}+brightness:${brightness}", "from_color" : "${from_color.toLowerCase()}+brightness:${brightness}", "cycles" : "${cycles}" ,"period" : "${period}"])
+    sendMessageToLIFX("lights/${state.groupsList}/effects/${effect}", "POST", ["color" : "${color.toLowerCase()} brightness:${brightness}", "from_color" : "${from_color.toLowerCase()} brightness:${brightness}", "cycles" : "${cycles}" ,"period" : "${period}"])
 }
 
 
