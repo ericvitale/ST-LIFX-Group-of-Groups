@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  Version 1.2.3 - Fixed an issue with setColor() introduced by an api change. (05/19/2017)
  *  Version 1.2.2 - Fixed a bug introduced in version 1.2.1. (05/18/2017)
  *  Version 1.2.1 - Fixed an issue with poll not sending the correct group list to LIFX, they must have changed the api. (05/18/2017)
  *  Version 1.2.0 - Added the ability to execute the pulse and breathe command via CoRE or webCoRE using runEffect(effect="pulse", color="blue", from_color="red", cycles=5, period=0.5). (05/13/2017)
@@ -429,7 +430,7 @@ def setColor(value) {
     data.level = device.currentValue("level")
     
     buildGroupList()
-    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "saturation:${data.saturation / 100}+hue:${data.hue * 3.6}"])
+    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "saturation:${data.saturation / 100} hue:${data.hue * 3.6}"])
     
     sendEvent(name: "hue", value: value.hue)
     sendEvent(name: "saturation", value: value.saturation)
