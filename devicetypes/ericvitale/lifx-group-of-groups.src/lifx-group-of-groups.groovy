@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  Version 1.2.4 - Added saturation:0 to setColorTemperature per LIFX's recommendation. (05/22/2017)
  *  Version 1.2.3 - Fixed an issue with setColor() introduced by an api change. (05/19/2017)
  *  Version 1.2.2 - Fixed a bug introduced in version 1.2.1. (05/18/2017)
  *  Version 1.2.1 - Fixed an issue with poll not sending the correct group list to LIFX, they must have changed the api. (05/18/2017)
@@ -446,7 +447,7 @@ def setColorTemperature(value) {
 	log("Begin setting groups color temperature to ${value}.", "DEBUG")
     
     buildGroupList()
-	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "kelvin:${value}"])
+	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "kelvin:${value} saturation:0"])
             
 	sendEvent(name: "colorTemperature", value: value)
 	sendEvent(name: "color", value: "#ffffff")
