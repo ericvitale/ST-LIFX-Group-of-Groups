@@ -490,7 +490,7 @@ def setSaturation(val) {
 private sendMessageToLIFX(path, method="GET", body=null) {
     def pollParams = [
         uri: "https://api.lifx.com",
-		path: "/v1/"+path+".json",
+		path: "/v1/" + path,
 		headers: ["Content-Type": "application/x-www-form-urlencoded", "Authorization": "Bearer ${token}"],
         body: body
     ]
@@ -524,8 +524,10 @@ private sendMessageToLIFX(path, method="GET", body=null) {
 private sendMessageToLIFXWithResponse(path, method="GET", body=null) {
     def pollParams = [
         uri: "https://api.lifx.com",
-		path: "/v1/"+path+".json",
-        headers: ["Content-Type": "application/x-www-form-urlencoded", "Authorization": "Bearer ${token}"],
+		//path: "/v1/"+path+".json",
+        path: "/v1/" + path,
+        //headers: ["Content-Type": "application/x-www-form-urlencoded", "Authorization": "Bearer ${token}"],
+        headers: ["Content-Type": "application/json", "Accept": "application/json", "Authorization": "Bearer ${token}"],
         body: body
     ]
     
