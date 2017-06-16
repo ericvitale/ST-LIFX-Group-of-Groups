@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  Version 1.2.5 - Added the apiFlash() methiod. apiFlash(cycles=5, period=0.5, brightness1=1.0, brightness2=0.0) (06/16/2017)
  *  Version 1.2.4 - Added saturation:0 to setColorTemperature per LIFX's recommendation. (05/22/2017)
  *  Version 1.2.3 - Fixed an issue with setColor() introduced by an api change. (05/19/2017)
  *  Version 1.2.2 - Fixed a bug introduced in version 1.2.1. (05/18/2017)
@@ -61,6 +62,8 @@ metadata {
         command "syncOn"
         command "syncOff"
         command "runEffect"
+        command "transitionLevel"
+        command "apiFlash"
         
         attribute "colorName", "string"
         attribute "lightStatus", "string"
@@ -93,7 +96,7 @@ metadata {
 
     simulator {
     }
-    //79b821fffA62
+    
     tiles(scale: 2) {
     	multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 4, canChangeIcon: true){
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
@@ -359,6 +362,11 @@ def off(sync=false) {
     log("End turning groups off", "DEBUG")
 }
 
+def transitionLevel(value, duration=1.0) {
+	log("transitionLevel(${value}, ${duration})", "DEBUG")
+	setLevel(value, duration)
+}
+
 def setLevel(value) {
 	log("Begin setting groups level to ${value}.", "DEBUG")
     
@@ -407,7 +415,7 @@ def setLevel(value, duration) {
 	}
     
     def brightness = data.level / 100
-    def durationSeconds = duration / 1000
+    def durationSeconds = duration /// 1000
     
     buildGroupList()
 	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["brightness": brightness, "power": "on", "duration": durationSeconds])
@@ -415,7 +423,13 @@ def setLevel(value, duration) {
     state.level = value
 
     sendEvent(name: "level", value: value)
-    sendEvent(name: "switch", value: "on")
+    
+    if(value > 0) {
+	    sendEvent(name: "switch", value: "on")
+	} else {
+    	sendEvent(name: "switch", value: "off")
+    }
+    
     reportPowerUsage()
     
     log("state.level = ${state.level}", "DEBUG")
@@ -708,6 +722,25 @@ def runEffect(effect="pulse", color="blue", from_color="red", cycles=5, period=0
     buildGroupList()
     log("The Group is: ${state.groupsList}", "DEBUG")
     sendMessageToLIFX("lights/${state.groupsList}/effects/${effect}", "POST", ["color" : "${color.toLowerCase()} brightness:${brightness}", "from_color" : "${from_color.toLowerCase()} brightness:${brightness}", "cycles" : "${cycles}" ,"period" : "${period}"])
+}
+
+def apiFlash(cycles=5, period=0.5, brightness1=1.0, brightness2=0.0) {
+    buildGroupList()
+    
+    if(brightness1 < 0.0) {
+    	brightness1 = 0.0
+    } else if(brightness1 > 1.0) {
+    	brightness1 = 1.0
+    }
+    
+    if(brightness2 < 0.0) {
+    	brightness2 = 0.0
+    } else if(brightness2 > 1.0) {
+    	brightness2 = 1.0
+    }
+    
+    log("The Group is: ${state.groupsList}", "DEBUG")
+    sendMessageToLIFX("lights/${state.groupsList}/effects/pulse", "POST", ["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : "${cycles}" ,"period" : "${period}"])
 }
 
 
