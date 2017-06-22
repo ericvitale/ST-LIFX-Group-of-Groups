@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  Version 1.3.0 - Updated to use the ST Beta Asynchronous API. (06/22/17)
  *  Version 1.2.5 - Added the apiFlash() methiod. apiFlash(cycles=5, period=0.5, brightness1=1.0, brightness2=0.0) (06/16/2017)
  *  Version 1.2.4 - Added saturation:0 to setColorTemperature per LIFX's recommendation. (05/22/2017)
  *  Version 1.2.3 - Fixed an issue with setColor() introduced by an api change. (05/19/2017)
@@ -37,9 +38,13 @@
  *  You can find my other device handlers & SmartApps @ https://github.com/ericvitale
  *
  **/
+ 
+include 'asynchttp_v1'
+
+import java.text.DecimalFormat;
 
 metadata {
-    definition (name: "LIFX Group of Groups", namespace: "ericvitale", author: "ericvitale@gmail.com") {
+    definition (name: "LIFX Group of Groups Async", namespace: "ericvitale", author: "ericvitale@gmail.com") {
         capability "Polling"
         capability "Switch"
         capability "Switch Level"
@@ -48,17 +53,11 @@ metadata {
 		capability "Color Temperature"
 		capability "Actuator"
         capability "Sensor"
-        capability "Power Meter"
         
         command "setAdjustedColor"
         command "setColor"
         command "refresh"
         command "poll"
-        command "sceneOne"
-        command "sceneTwo"
-        command "sceneThree"
-        command "sceneFour"
-        command "sceneFive"
         command "syncOn"
         command "syncOff"
         command "runEffect"
@@ -67,34 +66,22 @@ metadata {
         
         attribute "colorName", "string"
         attribute "lightStatus", "string"
-        attribute "powerUsageText", "string"
     }
     
     preferences {
-    	input "token", "text", title: "API Token", required: true
-        
-        input "numberOfBulbs", "number", title: "Number of Bulbs", required: true, defaultValue: 1
-        input "maxWatts", "decimal", title: "Number of Watts @ 100%", required: true, defaultValue: 11.0
-        input "powerReportMinutes", "number", title: "Report every X minutes?", required: true, defaultValue: 1
-        
+    	input "token", "text", title: "API Token", required: true        
         input "group01", "text", title: "Group 1", required: true
-     	
-        (2..10).each() { n->
-        	input "group0${n}", "text", title: "Group ${n}", required: false
-        }
-        (1..5).each() { n->
-        	input "scene0${n}Brightness", "number", title: "Scene ${n} - Brightness", required: false
-            input "scene0${n}Color", "text", title: "Scene ${n} - Color/Kelvin", required: false, description: "Options: white, red, orange, yellow, cyan, green, blue, purple, pink, or kelvin:[2700-9000]"
-        }
+        input "group02", "text", title: "Group 2", required: false
+        input "group03", "text", title: "Group 3", required: false
+        input "group04", "text", title: "Group 4", required: false
+        input "group05", "text", title: "Group 5", required: false
+        input "group06", "text", title: "Group 6", required: false
+        input "group07", "text", title: "Group 7", required: false
+        input "group08", "text", title: "Group 8", required: false
+        input "group09", "text", title: "Group 9", required: false
+        input "group10", "text", title: "Group 10", required: false
        
         input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
-        input "useSchedule", "bool", title: "Use Schedule", required: false, defaultValue: false
-       	input "frequency", "number", title: "Frequency?", required: true, range: "1..*", defaultValue: 15
-        input "startHour", "number", title: "Schedule Start Hour", required: true, range: "0..23", defaultValue: 7
-        input "endHour", "number", title: "Schedule End Hour", required: true, range: "0..23", defaultValue: 23
-    }
-
-    simulator {
     }
     
     tiles(scale: 2) {
@@ -102,14 +89,9 @@ metadata {
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
 				attributeState "on", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#00a0dc", nextState:"turningOff"
 				attributeState "off", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ffffff", nextState:"turningOn"
-				attributeState "onish", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ff0000", nextState:"turningOn"
 				attributeState "turningOn", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#00a0dc", nextState:"turningOff"
 				attributeState "turningOff", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#fffA62", nextState:"turningOn"
 			}
-            
-            /*tileAttribute ("device.level", key: "SECONDARY_CONTROL") {
-				attributeState "default", label:'${currentValue}%'
-			}*/
             
             tileAttribute ("device.level", key: "SLIDER_CONTROL") {
         		attributeState "default", action:"switch level.setLevel"
@@ -124,7 +106,6 @@ metadata {
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
 				attributeState "on", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#00a0dc", nextState:"turningOff"
 				attributeState "off", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ffffff", nextState:"turningOn"
-				attributeState "onish", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ff0000", nextState:"turningOn"
 				attributeState "turningOn", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#fffA62", nextState:"turningOff"
 				attributeState "turningOff", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#fffA62", nextState:"turningOn"
 			}
@@ -157,37 +138,11 @@ metadata {
         standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
 			state "default", label:"", action:"refresh.refresh", icon: "st.secondary.refresh"
 		}
-        
-        standardTile("sceneOne", "device.sceneOne", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
-			state "default", label:"Scene One", action:"sceneOne", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
-		}
-        
-        standardTile("sceneTwo", "device.sceneTwo", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
-			state "default", label:"Scene Two", action:"sceneTwo", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
-		}
-        
-        standardTile("sceneThree", "device.sceneThree", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
-			state "default", label:"Scene Three", action:"sceneThree", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
-		}
-        
-        standardTile("sceneFour", "device.sceneFour", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
-			state "default", label:"Scene Four", action:"sceneFour", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
-		}
-        
-        standardTile("sceneFive", "device.sceneFive", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
-			state "default", label:"Scene Five", action:"sceneFive", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png"
-		}
-
-        valueTile("PowerUsage", "device.powerUsageText", width: 4, height: 1) {
-        	state "default", label: '${currentValue}'
-        }
 
         main(["switch"])
-        details(["switchDetails", "Brightness", "levelSliderControl", "colorTemp", "colorTempSliderControl", "rgbSelector", "sceneOne", "sceneTwo", "sceneThree", "sceneFour", "sceneFive", "refresh", "PowerUsage"])
+        details(["switchDetails", "Brightness", "levelSliderControl", "colorTemp", "colorTempSliderControl", "rgbSelector", "refresh"])
     }
 }
-
-def groupList =  ""
 
 def installed() {
 	log("Begin installed().", "DEBUG")
@@ -210,75 +165,73 @@ def refresh() {
 def initialize() {
 	log("Begin initialize.", "DEBUG")
     unschedule()
-    buildGroupList()
+    getGroups(true)
     setupSchedule()
-    
-    if(powerReportMinutes > 0 && numberOfBulbs > 0) {
-	    schedule("0 0/${powerReportMinutes} * * * ?", reportPowerUsage)
-        reportPowerUsage()
-    }
-    
-    log("Number of Bulbs = ${numberOfBulbs}.", "INFO")
-    log("Max Watts per bulb = ${maxWatts}.", "INFO")
-    log("Report every ${powerReportMinutes} minutes.", "INFO")
-    
 	log("End initialize.", "DEBUG")
 }
 
 def buildGroupList() {
 	log("Begin method buildGroupList().", "DEBUG")
 
+	def groups = ""
+	
     try {
         
         if(group01.toUpperCase() == "ALL") {
-        	state.groupsList = "all"
+        	groups = "all"
             return
         } else {
-	        state.groupsList = "group:" + group01
+	        groups = "group:" + group01
         }
         
         if(group02 != null) {
-        	state.groupsList = state.groupsList + ",group:" + group02
+        	groups = groups + ",group:" + group02
         }
         
         if(group03 != null) {
-            state.groupsList = state.groupsList + ",group:" + group03
+            groups = groups + ",group:" + group03
         }
         
         if(group04 != null) {
-			state.groupsList = state.groupsList + ",group:" + group04
+			groups = groups + ",group:" + group04
         }
         
         if(group05 != null) {
-            state.groupsList = state.groupsList + ",group:" + group05
+            groups = groups + ",group:" + group05
         }
                 
         if(group06 != null) {
-            state.groupsList = state.groupsList + ",group:" + group06
+            groups = groups + ",group:" + group06
         }
         
         if(group07 != null) {
-            state.groupsList = state.groupsList + ",group:" + group07
+            groups = groups + ",group:" + group07
         }
         
         if(group08 != null) {
-            state.groupsList = state.groupsList + ",group:" + group08
+            groups = groups + ",group:" + group08
         }
         
         if(group09 != null) {
-            state.groupsList = state.groupsList + ",group:" + group09
+            groups = groups + ",group:" + group09
         }
         
         if(group10 != null) {
-            state.groupsList = state.groupsList + ",group:" + group10
+            groups = groups + ",group:" + group10
         }
+        
+        return groups
     } catch(e) {
     	log(e, "ERROR")
+        return ""
     }
-    
-    log("GroupsList = <<<${state.groupsList}>>>", "DEBUG")
-    
-    log("End method buildGroupList().", "DEBUG")
+}
+
+def getGroups(refresh=false) {
+	if(refresh) {
+    	state.groups = buildGroupList()
+    }
+	return state.groups
 }
 
 private determineLogLevel(data) {
@@ -331,34 +284,24 @@ def log(data, type) {
 
 def syncOn() {
 	sendEvent(name: "switch", value: "on", data: [syncing: "true"])
-    reportPowerUsage()
 }
 
 def on() {
 	log("Begin turning groups on", "DEBUG")
-    buildGroupList()
-    log("The group list is ${state.groupList}.", "DEBUG")
-    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", "power=on&duration=0.0")
+    sendLIFXCommand(["power" : "on", "duration" : "0.0"])
     sendEvent(name: "switch", value: "on", data: [syncing: "false"])
     sendEvent(name: "level", value: "${state.level}")
-    reportPowerUsage()
-    log("state.level = ${state.level}", "DEBUG")
     log("End turning groups on", "DEBUG")
 }
 
 def syncOff() {
 	 sendEvent(name: "switch", value: "off", data: [syncing: "true"])
-     reportPowerUsage()
 }
 
 def off(sync=false) {
 	log("Begin turning groups off", "DEBUG")
-    buildGroupList()
-    log("The group list is ${state.groupList}.", "DEBUG")
-    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", "power=off&duration=0.0")
+    sendLIFXCommand(["power" : "off", "duration" : "0.0"])
     sendEvent(name: "switch", value: "off", data: [syncing: "false"])
-    reportPowerUsage()
-    log("state.level = ${state.level}", "DEBUG")
     log("End turning groups off", "DEBUG")
 }
 
@@ -367,7 +310,7 @@ def transitionLevel(value, duration=1.0) {
 	setLevel(value, duration)
 }
 
-def setLevel(value) {
+/*def setLevel(value) {
 	log("Begin setting groups level to ${value}.", "DEBUG")
     
     def data = [:]
@@ -379,26 +322,23 @@ def setLevel(value) {
 		data.level = 1
 	} else if (data.level == 0 || data.level == null) {
 		sendEvent(name: "level", value: 0)
-        reportPowerUsage()
 		return off()
 	}
     
     def brightness = data.level / 100
-    
-    buildGroupList()
-	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["brightness": brightness, "power": "on"])
+
+    sendLIFXCommand(["brightness": brightness, "power": "on"])
     
     state.level = value
 
     sendEvent(name: "level", value: value)
     sendEvent(name: "switch", value: "on")
-    reportPowerUsage()
     
     log("state.level = ${state.level}", "DEBUG")
     log("End setting groups level to ${value}.", "DEBUG")
-}
+}*/
 
-def setLevel(value, duration) {
+def setLevel(value, duration=0.0) {
 	log("Begin setting groups level to ${value} over ${duration} seconds.", "DEBUG")
     
     def data = [:]
@@ -406,19 +346,17 @@ def setLevel(value, duration) {
     data.saturation = device.currentValue("saturation")
     data.level = value
     
-    if (data.level < 1 && data.level > 0) {
-		data.level = 1
-	} else if (data.level == 0 || data.level == null) {
+    if (value > 1) {
+		value = 1
+	} else if (value <= 0 || value == null) {
 		sendEvent(name: "level", value: 0)
-        reportPowerUsage()
 		return off()
 	}
     
-    def brightness = data.level / 100
-    def durationSeconds = duration /// 1000
-    
-    buildGroupList()
-	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["brightness": brightness, "power": "on", "duration": durationSeconds])
+    def brightness = value / 100
+    def durationSeconds = duration
+   
+    sendLIFXCommand(["brightness": brightness, "power": "on", "duration" : durationSeconds])
     
     state.level = value
 
@@ -426,13 +364,8 @@ def setLevel(value, duration) {
     
     if(value > 0) {
 	    sendEvent(name: "switch", value: "on")
-	} else {
-    	sendEvent(name: "switch", value: "off")
-    }
+	}
     
-    reportPowerUsage()
-    
-    log("state.level = ${state.level}", "DEBUG")
     log("End setting groups level.", "DEBUG")
 }
 
@@ -444,15 +377,13 @@ def setColor(value) {
     data.saturation = value.saturation
     data.level = device.currentValue("level")
     
-    buildGroupList()
-    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "saturation:${data.saturation / 100} hue:${data.hue * 3.6}"])
+    sendLIFXCommand([color: "saturation:${data.saturation / 100} hue:${data.hue * 3.6}"])
     
     sendEvent(name: "hue", value: value.hue)
     sendEvent(name: "saturation", value: value.saturation)
     sendEvent(name: "color", value: value.hex)
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "level", value: "${state.level}")
-    reportPowerUsage()
     
     log("End setting groups color to ${value}.", "DEBUG")
 }
@@ -460,14 +391,12 @@ def setColor(value) {
 def setColorTemperature(value) {
 	log("Begin setting groups color temperature to ${value}.", "DEBUG")
     
-    buildGroupList()
-	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "kelvin:${value} saturation:0"])
+    sendLIFXCommand([color: "kelvin:${value} saturation:0"])
             
 	sendEvent(name: "colorTemperature", value: value)
 	sendEvent(name: "color", value: "#ffffff")
 	sendEvent(name: "saturation", value: 0)
     sendEvent(name: "level", value: "${state.level}")
-    reportPowerUsage()
     
     log("End setting groups color temperature to ${value}.", "DEBUG")
 }
@@ -475,13 +404,11 @@ def setColorTemperature(value) {
 def setHue(val) {
 	log("Begin setting groups hue to ${val}.", "DEBUG")
     
-    buildGroupList()
-    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "hue:${val}"])
+    sendLIFXCommand([color: "hue:${val}"])
     
     sendEvent(name: "hue", value: val)
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "level", value: "${state.level}")
-    reportPowerUsage()
     
     log("End setting groups hue to ${val}.", "DEBUG")
 }
@@ -489,85 +416,16 @@ def setHue(val) {
 def setSaturation(val) {
 	log("Begin setting groups saturation to ${val}.", "DEBUG")
     
-    buildGroupList()
-    
-    sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", [color: "saturation:${val}"])
+    sendLIFXCommand([color: "saturation:${val}"])
     
     sendEvent(name: "saturation", value: val)
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "level", value: "${state.level}")
-    reportPowerUsage()
     
     log("End setting groups saturation to ${val}.", "DEBUG")
 }
 
-private sendMessageToLIFX(path, method="GET", body=null) {
-    def pollParams = [
-        uri: "https://api.lifx.com",
-		path: "/v1/" + path,
-		headers: ["Content-Type": "application/x-www-form-urlencoded", "Authorization": "Bearer ${token}"],
-        body: body
-    ]
-    
-    log("URL = ${path}", "DEBUG")
-    
-    try {
-        if(method=="GET") {
-            httpGet(pollParams) { resp ->            
-                parseResponse(resp)
-            }
-        } else if(method=="PUT") {
-            httpPut(pollParams) { resp ->            
-                parseResponse(resp)
-            }
-        } else if(method=="POST") {
-            httpPost(pollParams) { resp ->            
-                parseResponse(resp)
-            }
-        }
-    } catch(Exception e) {
-        log(e, "ERROR")
-        if(e?.getMessage()?.toUpperCase() == "NOT FOUND") {
-        	log("LIFX did not understand one of your group names. They need to match what is in your LIFX app and they are case sensitive.", "ERROR")
-        } else if(e?.getMessage()?.toUpperCase() == "UNAUTHORIZED") {
-        	log("The API token you entered is not correct and LFIX will not authorize your remote call.", "ERROR")
-        }
-    }
-}
 
-private sendMessageToLIFXWithResponse(path, method="GET", body=null) {
-    def pollParams = [
-        uri: "https://api.lifx.com",
-		//path: "/v1/"+path+".json",
-        path: "/v1/" + path,
-        //headers: ["Content-Type": "application/x-www-form-urlencoded", "Authorization": "Bearer ${token}"],
-        headers: ["Content-Type": "application/json", "Accept": "application/json", "Authorization": "Bearer ${token}"],
-        body: body
-    ]
-    
-    log("path = ${path}", "DEBUG")
-    
-    try {
-        if(method=="GET") {
-            httpGet(pollParams) { resp ->            
-                parseResponsePoll(resp)
-            }
-        } else if(method=="PUT") {
-            httpPut(pollParams) { resp ->            
-                parseResponsePoll(resp)
-            }
-        }
-        
-        return resp
-    } catch(Exception e) {
-        log(e, "ERROR")
-        if(e?.getMessage().toUpperCase() == "NOT FOUND") {
-        	log("LIFX did not understand one of your group names. They need to match what is in your LIFX app and they are case sensitive.", "ERROR")
-        } else if(e?.getMessage().toUpperCase() == "UNAUTHORIZED") {
-        	log("The API token you entered is not correct and LFIX will not authorize your remote call.", "ERROR")
-        }
-    }
-}
 
 private parseResponse(resp) {
     if (resp.status == 404) {
@@ -621,15 +479,12 @@ private parseResponsePoll(resp) {
     if(anyOn && anyOff) {
     	log("Some lights on, some off.", "DEBUG")
         sendEvent(name: "switch", value: "onish")
-        reportPowerUsage()
     } else if(anyOn && !anyOff) {
     	log("All lights on.", "DEBUG")
 		sendEvent(name: "switch", value: "on")
-        reportPowerUsage()
     } else {
     	log("All lights off.", "DEBUG")
         sendEvent(name: "switch", value: "off")
-        reportPowerUsage()
     }
 }
 
@@ -637,78 +492,12 @@ def poll() {
 	log("Begin poll.", "DEBUG")
     
     	buildGroupList()
-    	sendMessageToLIFXWithResponse("lights/" + state.groupsList, "GET")
+        sendLIFXInquiry()
     
     log("End poll.", "DEBUG")
 }
 
 def parse(description) {
-	log("Begin parse()", "DEBUG")
-	log("description = ${description}.", "DEBUG")
-    //sendEvent(name: "level", value: state.level)
-    log("End parse().", "DEBUG")
-}
-
-def sceneOne() {
-	log("Begin sceneOne().", "DEBUG")
-    log("sceneOne(${scene01Brightness}, ${scene01Color}", "DEBUG")
-    setScene(scene01Brightness, scene01Color)
-	log("End sceneOne().", "DEBUG")
-}
-
-def sceneTwo() {
-	log("Begin sceneTwo().", "DEBUG")
-    log("sceneTwo(${scene02Brightness}, ${scene02Color}", "DEBUG")
-    setScene(scene02Brightness, scene02Color)
-	log("End sceneTwo().", "DEBUG")
-}
-
-def sceneThree() {
-	log("Begin sceneThree().", "DEBUG")
-    log("sceneThree(${scene03Brightness}, ${scene03Color}", "DEBUG")
-    setScene(scene03Brightness, scene03Color)
-	log("End sceneThree().", "DEBUG")
-}
-
-def sceneFour() {
-	log("Begin sceneFour().", "DEBUG")
-    log("sceneFour(${scene04Brightness}, ${scene04Color}", "DEBUG")
-    setScene(scene04Brightness, scene04Color)
-	log("End sceneFour().", "DEBUG")
-}
-
-def sceneFive() {
-	log("Begin sceneFive().", "DEBUG")
-    log("sceneFive(${scene05Brightness}, ${scene05Color}", "DEBUG")
-    setScene(scene05Brightness, scene05Color)
-	log("End sceneFive().", "DEBUG")
-}
-
-def setScene(brightness, temp) {
-	log("Begin setScene(...)", "DEBUG")
-    
-    if(brightness != null && temp != null) {
-    	def brightnessValue = brightness / 100
-    	buildGroupList()
-   	 	sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["color" : "${temp.toLowerCase()}+", "brightness" : "${brightnessValue}" ,"power" : "on"])
-       
-        sendEvent(name: "level", value: brightness)
-	    sendEvent(name: "switch", value: "on")
-        reportPowerUsage()
-        
-       if(temp.toLowerCase().startsWith("kelvin:")) {
-       		temp = temp.toLowerCase().minus("kelvin:")
-	        sendEvent(name: "colorTemp", value: temp)
-			sendEvent(name: "color", value: "#ffffff")
-			sendEvent(name: "saturation", value: 0)
-            sendEvent(name: "colorTemperature", value: temp)
-		    sendEvent(name: "level", value: "${state.level}")
-        } else {
-        	sendEvent(name: "color", value: getHex(temp))
-        }
-    }
-    
-    log("End setScene(...)", "DEBUG")
 }
 
 def runEffect(effect="pulse", color="blue", from_color="red", cycles=5, period=0.5, brightness=0.5) {
@@ -719,9 +508,7 @@ def runEffect(effect="pulse", color="blue", from_color="red", cycles=5, period=0
         effect = "pulse"
     }
 	
-    buildGroupList()
-    log("The Group is: ${state.groupsList}", "DEBUG")
-    sendMessageToLIFX("lights/${state.groupsList}/effects/${effect}", "POST", ["color" : "${color.toLowerCase()} brightness:${brightness}", "from_color" : "${from_color.toLowerCase()} brightness:${brightness}", "cycles" : "${cycles}" ,"period" : "${period}"])
+    runLIFXEffect(["color" : "${color.toLowerCase()} brightness:${brightness}", "from_color" : "${from_color.toLowerCase()} brightness:${brightness}", "cycles" : "${cycles}" ,"period" : "${period}"], effect)
 }
 
 def apiFlash(cycles=5, period=0.5, brightness1=1.0, brightness2=0.0) {
@@ -738,11 +525,9 @@ def apiFlash(cycles=5, period=0.5, brightness1=1.0, brightness2=0.0) {
     } else if(brightness2 > 1.0) {
     	brightness2 = 1.0
     }
-    
-    log("The Group is: ${state.groupsList}", "DEBUG")
-    sendMessageToLIFX("lights/${state.groupsList}/effects/pulse", "POST", ["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : "${cycles}" ,"period" : "${period}"])
-}
 
+	runLIFXEffect(["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : "${cycles}" ,"period" : "${period}"], "pulse")
+}
 
 def getHex(val) {
 	if(val.toLowerCase() == "red") {
@@ -772,23 +557,11 @@ def setupSchedule() {
     try {
 	    unschedule(refresh)
     } catch(e) {
-    	log("Failed to unschedule!", "ERROR")
-        log("Exception ${e}", "ERROR")
+        log("Failed to unschedule! Exception ${e}", "ERROR")
         return
     }
-
-	log("useSchedule = ${useSchedule}.", "DEBUG")
     
-    if(useSchedule) {
-        
-        try {
-        	schedule("17 0/${frequency.toString()} ${startHour.toString()}-${endHour.toString()} * * ?", refresh)
-            log("Refresh scheduled to run every ${frequency.toString()} minutes between hours ${startHour.toString()}-${endHour.toString()}.", "INFO")
-        } catch(e) {
-        	log("Failed to set schedule!", "ERROR")
-            log("Exception ${e}", "ERROR")
-        } 
-    }
+    runEvery1Minute(refresh)
     
     log("End setupSchedule().", "DEBUG")
 }
@@ -801,45 +574,201 @@ def updateLightStatus(lightStatus) {
 	sendEvent(name: "lightStatus", value: finalString, display: false , displayed: false)
 }
 
-def determinePowerUsage() {
-	
-    log("switch = ${device.currentValue('switch')}.", "DEBUG")
-    log("level = ${state.level}.", "DEBUG")
-    
-    def val = 0.0
+def getLastCommand() {
+	return state.lastCommand
+}
 
-    if(device.currentValue("switch") == "off") {
-    	val =  0.7
+def setLastCommand(command) {
+	state.lastCommand = command
+}
+
+def incRetryCount() {
+	state.retryCount = state.retryCount + 1
+}
+
+def resetRetryCount() {
+	state.retryCount = 0
+}
+
+def getRetryCount() {
+	return state.retryCount
+}
+
+def getMaxRetry() {
+	return 3
+}
+
+def retry() {
+	if(getRetryCount() < getMaxRetry()) {
+    	log("Retrying command...", "INFO")
+		runIn(5, sendLastCommand)
     } else {
-        if(state.level <= 100 && state.level >= 90) {
-            val = (maxWatts * (1 - ((100 - state.level) * 0.02)))
-        } else if(state.level < 90 && state.level >= 80) {
-            val = maxWatts * (0.8 - ((90 - state.level) * 0.015))
-        } else if(state.level < 80 && state.level >= 70) {
-            val = maxWatts * (0.65 - ((80 - state.level) * 0.015))
-        } else if(state.level < 70 && state.level >= 60) {
-            val = maxWatts * (0.5 - ((70 - state.level) * 0.0135))
-        } else if(state.level < 60 && state.level >= 50) {
-            val = (maxWatts * (0.365 - ((60 - state.level) * 0.0145)))
-        } else if(state.level < 50 && state.level >= 40) {
-            val = (maxWatts * (0.22 - ((50 - state.level) * 0.0075)))
-        } else {
-            val = maxWatts / 11.0
+    	log("Too many retries...", "WARN")
+        resetRetryCount()
+    }
+}
+
+def sendLastCommand() {
+	sendLIFXCommand(getLastCommand())
+}
+
+////////////   BEGIN LIFX COMMANDS ///////////
+
+//sendMessageToLIFX("lights/" + state.groupsList + "/state", "PUT", ["brightness": brightness, "power": "on"])
+def sendLIFXCommand(commands) {
+
+	setLastCommand(commands)
+
+    def params = [
+        uri: "https://api.lifx.com",
+		path: "/v1/lights/" + getGroups() + "/state",
+        headers: ["Content-Type": "application/json", "Accept": "application/json", "Authorization": "Bearer ${token}"],
+        body: commands
+    ]
+    
+    log("GroupList = ${getGroups()}", "DEBUG")
+    log("Path = ${params["uri"]}${params["path"]}", "DEBUG")
+    
+    asynchttp_v1.put('putResponseHandler', params)
+}
+
+//sendMessageToLIFX("lights/${state.groupsList}/effects/pulse", "POST", ["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : "${cycles}" ,"period" : "${period}"])
+def runLIFXEffect(commands, effect) {
+
+	def params = [
+        uri: "https://api.lifx.com",
+		path: "/v1/lights/" + getGroups() + "/effects/" + effect,
+        headers: ["Content-Type": "application/json", "Accept": "application/json", "Authorization": "Bearer ${token}"],
+        body: commands
+    ]
+    
+    asynchttp_v1.post('postResponseHandler', params)
+}
+
+//sendMessageToLIFXWithResponse("lights/" + state.groupsList, "GET")
+def sendLIFXInquiry() {
+
+	def params = [
+        uri: "https://api.lifx.com",
+		path: "/v1/lights/" + getGroups(),
+        headers: ["Content-Type": "application/x-www-form-urlencoded", "Authorization": "Bearer ${token}"]
+    ]
+    
+    asynchttp_v1.get('getResponseHandler', params)
+}
+
+def postResponseHandler(response, data) {
+
+    if(response.getStatus() == 200 || response.getStatus() == 207) {
+		log("LFIX Success.", "DEBUG")
+        //updateDeviceLastActivity(new Date())
+    } else {
+    	log("LIFX failed to adjust group. LIFX returned ${response.getStatus()}.", "ERROR")
+        log("Error = ${response.getErrorData()}", "ERROR")
+    }
+}
+
+def putResponseHandler(response, data) {
+
+    if(response.getStatus() == 200 || response.getStatus() == 207) {
+		log("LFIX Success.", "DEBUG")
+        
+        def len = response.getJson().results.length()
+        def results = response.getJson().results
+        def oks = 0
+        
+        for(int i=0;i<len;i++) {
+        	if(result[i].status != "ok") {
+        		log("${results[i].label} is ${results[i].status}.", "WARN")
+            } else {
+            	log("${results[i].label} is ${results[i].status}.", "TRACE")
+            }
+            oks++
         }
+        
+        if(oks == len) { 
+        	//everything is ok
+            log("${oks} of ${len} bulbs returned ok.", "INFO")
+            resetRetryCount()
+        } else {
+        	//something didn't work
+        	log("${oks} of ${len} bulbs returned ok.", "WARN")
+            retry()
+        }
+
+        updateLightStatus("${oks} of ${len}")
+        
+    } else {
+    	log("LIFX failed to adjust group. LIFX returned ${response.getStatus()}.", "ERROR")
+        log("Error = ${response.getErrorData()}", "ERROR")
     }
-    
-    log("Power Reported: ${val * numberOfBulbs} watts or ${val} watts per bulb.", "INFO")
-    log("val = ${val * numberOfBulbs}.", "DEBUG")
-    return val * numberOfBulbs
 }
 
-def reportPowerUsage() {
-	if(numberOfBulbs > 0) {
-	def usage = determinePowerUsage()
-	log("Power usage = ${usage}", "INFO")
-	sendEvent(name: "power", value: "${usage}")
-    sendEvent(name: "powerUsageText", value: "${usage}W, ${usage / numberOfBulbs}W per bulb (${numberOfBulbs}).")
+def getResponseHandler(response, data) {
+
+    if(response.getStatus() == 200 || response.getStatus() == 207) {
+		log("LFIX Success.", "DEBUG")
+        //updateDeviceLastActivity(new Date())
+        
+        log("Response ${response.getJson()}", "DEBUG")
+        
+       	response.getJson().each {
+        	log("${it.label} is ${it.power}.", "TRACE")
+        	log("Bulb Type: ${it.product.name}.", "TRACE")
+        	log("Capabilities? Color Temperature = ${it.product.capabilities.has_variable_color_temp}, Is Color = ${it.product.capabilities.has_color}.", "TRACE")
+        	log("Brightness = ${it.brightness}.", "TRACE")
+        	log("Color = [saturation:${it.color.saturation}], kelvin:${it.color.kelvin}, hue:${it.color.hue}.", "TRACE")
+        
+       		def refreshT = "${it.label} is ${it.power}"
+        
+        	DecimalFormat df = new DecimalFormat("###,##0.0#")
+        	DecimalFormat dfl = new DecimalFormat("###,##0.000")
+        	DecimalFormat df0 = new DecimalFormat("###,##0")
+        
+        	if(it.power == "on") {
+        		refreshT += " with a brightness of ${df.format(it.brightness * 100)}%. Color @ [saturation:${df.format(it.color.saturation)}], kelvin:${it.color.kelvin}, hue:${dfl.format(it.color.hue)}."
+            } else {
+                refreshT += "."
+            }
+        
+            log("${refreshT}", "INFO")
+
+            sendEvent(name: "lastRefresh", value: new Date())
+            sendEvent(name: "refreshText", value: refreshT)
+
+            if(it.power == "on") {
+                sendEvent(name: "switch", value: "on")
+                if(it.color.saturation == 0.0) {
+                    log("Saturation is 0.0, setting color temperature.", "DEBUG")
+
+                    def b = df0.format(it.brightness * 100)
+
+                    sendEvent(name: "colorTemperature", value: it.color.kelvin)
+                    sendEvent(name: "color", value: "#ffffff")
+                    sendEvent(name: "level", value: b)
+                    sendEvent(name: "switch", value: "on")
+                } else {
+                    log("Saturation is > 0.0, setting color.", "DEBUG")
+                    def h = df.format(it.color.hue)
+                    def s = df.format(it.color.saturation)
+                    def b = df0.format(it.brightness * 100)
+
+                    log("h = ${h}, s = ${s}.", "INFO")
+
+                    sendEvent(name: "hue", value: h, displayed: true)
+                    sendEvent(name: "saturation", value: s, displayed: true)
+                    sendEvent(name: "kelvin", value: it.color.kelvin, displayed: true)
+                    sendEvent(name: "level", value: b)
+                    sendEvent(name: "switch", value: "on")
+                }
+            } else if(it.power == "off") {
+                sendEvent(name: "switch", value: "off")
+            }
+        }
     } else {
- 		log("Power usage reporting turned off.", "DEBUG")   
+    	log("LIFX failed to update the group. LIFX returned ${response.getStatus()}.", "ERROR")
+        log("Error = ${response.getErrorData()}", "ERROR")
     }
 }
+
+////////////// END LIFX COMMANDS /////////////
