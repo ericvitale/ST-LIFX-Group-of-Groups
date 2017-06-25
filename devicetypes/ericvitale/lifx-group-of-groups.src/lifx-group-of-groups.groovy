@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  Version 1.3.1 - Added setLevelAndTemperature method to allow webCoRE set both with a single command. (06/25/2017)
  *  Version 1.3.0 - Updated to use the ST Beta Asynchronous API. (06/22/17)
  *  Version 1.2.5 - Added the apiFlash() methiod. apiFlash(cycles=5, period=0.5, brightness1=1.0, brightness2=0.0) (06/16/2017)
  *  Version 1.2.4 - Added saturation:0 to setColorTemperature per LIFX's recommendation. (05/22/2017)
@@ -64,6 +65,7 @@ metadata {
         command "transitionLevel"
         command "apiFlash"
         command "apiBreathe"
+        command "setLevelAndTemperature"
         
         attribute "colorName", "string"
         attribute "lightStatus", "string"
@@ -369,6 +371,34 @@ def setSaturation(val) {
     sendEvent(name: "level", value: "${state.level}")
 }
 
+def setLevelAndTemperature(level, temperature, duration=getDefaultTransitionDuration()) {
+	log("Setting groups level to ${level} and color temperature to ${temperature} over ${duration} seconds.", "INFO")
+    
+    if (level > 100) {
+		level = 100
+	} else if (level <= 0 || level == null) {
+		sendEvent(name: "level", value: 0)
+		return off()
+	}
+    
+    if(temperature < 2500) {
+    	temperature = 2500
+    } else if(temperature > 9000) {
+    	temperature = 9000
+    }
+    
+    state.level = level
+	sendEvent(name: "level", value: level)
+    sendEvent(name: "switch", value: "on")
+	sendEvent(name: "colorTemperature", value: temperature)
+	sendEvent(name: "color", value: "#ffffff")
+	sendEvent(name: "saturation", value: 0)
+    
+    def brightness = level / 100
+    
+    sendLIFXCommand([color : "kelvin:${temperature} saturation:0 brightness:${brightness}", "power" : "on", "duration" : duration])
+}
+
 def poll() {
 	log("Polling...", "DEBUG")
     buildGroupList()
@@ -524,6 +554,8 @@ def sendLastCommand() {
 def sendLIFXCommand(commands) {
 
 	setLastCommand(commands)
+    
+    log("Command = ${commands}", "INFO")
     
     def params = [
         uri: "https://api.lifx.com",
