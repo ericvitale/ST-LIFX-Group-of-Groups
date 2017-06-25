@@ -222,7 +222,7 @@ def buildGroupList() {
 }
 
 def getGroups(refresh=false) {
-	if(refresh) {
+	if(refresh || state.groups == null || state.groups == "") {
     	state.groups = buildGroupList()
     }
 	return state.groups
