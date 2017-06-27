@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  Version 1.3.2 - Added the ability to use separate durations for on/off and setLevel commands. (06/26/2017)
  *  Version 1.3.1 - Added setLevelAndTemperature method to allow webCoRE set both with a single command. (06/25/2017)
  *  Version 1.3.0 - Updated to use the ST Beta Asynchronous API. (06/22/17)
  *  Version 1.2.5 - Added the apiFlash() methiod. apiFlash(cycles=5, period=0.5, brightness1=1.0, brightness2=0.0) (06/16/2017)
@@ -84,7 +85,8 @@ metadata {
         input "group09", "text", title: "Group 9", required: false
         input "group10", "text", title: "Group 10", required: false
        
-       	input "defaultTransition", "decimal", title: "Default Transition Time", required: true, defaultValue: 0.0
+       	input "defaultTransition", "decimal", title: "Level Transition Time (s)", required: true, defaultValue: 0.0
+        input "defaultStateTransition", "decimal", title: "On/Off Transition Time (s)", required: true, defaultValue: 0.0
         input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
     }
     
@@ -165,6 +167,7 @@ def initialize() {
     getGroups(true)
     setupSchedule()
     setDefaultTransitionDuration(defaultTransition)
+    setDefaultStateTransitionDuration(defaultStateTransition)
 }
 
 def buildGroupList() {
@@ -175,7 +178,7 @@ def buildGroupList() {
         
         if(group01.toUpperCase() == "ALL") {
         	groups = "all"
-            return
+            return groups
         } else {
 	        groups = "group:" + group01
         }
@@ -281,10 +284,10 @@ def log(data, type) {
 def syncOn() {
 	sendEvent(name: "switch", value: "on", data: [syncing: "true"])
 }
-
-def on() {
+//getDefaultStateTransitionDuration()
+def on(duration=getDefaultStateTransitionDuration()) {
 	log("Turning on...", "INFO")
-    sendLIFXCommand(["power" : "on", "duration" : "0.0"])
+    sendLIFXCommand(["power" : "on", "duration" : duration])
     sendEvent(name: "switch", value: "on", data: [syncing: "false"])
     sendEvent(name: "level", value: "${state.level}")
 }
@@ -293,9 +296,9 @@ def syncOff() {
 	 sendEvent(name: "switch", value: "off", data: [syncing: "true"])
 }
 
-def off(sync=false) {
+def off(duration=getDefaultStateTransitionDuration(), sync=false) {
 	log("Turning off...", "INFO")
-    sendLIFXCommand(["power" : "off", "duration" : "0.0"])
+    sendLIFXCommand(["power" : "off", "duration" : duration])
     sendEvent(name: "switch", value: "off", data: [syncing: "false"])
 }
 
@@ -535,6 +538,17 @@ def setDefaultTransitionDuration(value) {
 
 def getDefaultTransitionDuration() {
 	return state.transitionDuration
+}
+
+def setDefaultStateTransitionDuration(value) {
+	state.onOffTransitionDuration = value
+}
+
+def getDefaultStateTransitionDuration() {
+	if(state.onOffTransitionDuration == null) {
+    	state.onOffTransitionDuration = 0.0
+    }
+	return state.onOffTransitionDuration
 }
 
 def retry() {
