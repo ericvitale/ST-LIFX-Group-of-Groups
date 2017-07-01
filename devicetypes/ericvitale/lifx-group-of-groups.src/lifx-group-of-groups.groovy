@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  Version 1.3.3 - Cleaned up a bit. (06/30/2017)
  *  Version 1.3.2 - Added the ability to use separate durations for on/off and setLevel commands. (06/26/2017)
  *  Version 1.3.1 - Added setLevelAndTemperature method to allow webCoRE set both with a single command. (06/25/2017)
  *  Version 1.3.0 - Updated to use the ST Beta Asynchronous API. (06/22/17)
@@ -284,7 +285,7 @@ def log(data, type) {
 def syncOn() {
 	sendEvent(name: "switch", value: "on", data: [syncing: "true"])
 }
-//getDefaultStateTransitionDuration()
+
 def on(duration=getDefaultStateTransitionDuration()) {
 	log("Turning on...", "INFO")
     sendLIFXCommand(["power" : "on", "duration" : duration])
@@ -345,6 +346,12 @@ def setColor(value) {
 
 def setColorTemperature(value) {
 	log("Begin setting groups color temperature to ${value}.", "DEBUG")
+    
+    if(value < 2500) {
+    	value = 2500
+    } else if(value > 9000) {
+    	value = 9000
+    }
     
     sendLIFXCommand([color: "kelvin:${value} saturation:0"])
             
@@ -607,7 +614,7 @@ def sendLIFXInquiry() {
 def postResponseHandler(response, data) {
 
     if(response.getStatus() == 200 || response.getStatus() == 207) {
-		log("LFIX Success.", "DEBUG")
+		log("Response received from LFIX in the postReponseHandler.", "DEBUG")
     } else {
     	log("LIFX failed to adjust group. LIFX returned ${response.getStatus()}.", "ERROR")
         log("Error = ${response.getErrorData()}", "ERROR")
@@ -617,9 +624,9 @@ def postResponseHandler(response, data) {
 def putResponseHandler(response, data) {
 
     if(response.getStatus() == 200 || response.getStatus() == 207) {
-		log("LFIX Success.", "DEBUG")
+		log("Response received from LFIX in the putReponseHandler.", "DEBUG")
         
-        log("Response = ${response.getJson()}", "DEBUG") //<<<<----
+        log("Response = ${response.getJson()}", "DEBUG")
         
         def totalBulbs = response.getJson().results.length()
         def results = response.getJson().results
@@ -653,14 +660,17 @@ def putResponseHandler(response, data) {
 def getResponseHandler(response, data) {
 
     if(response.getStatus() == 200 || response.getStatus() == 207) {
-		log("LFIX Success.", "DEBUG")
+		log("Response received from LFIX in the getReponseHandler.", "DEBUG")
         
         log("Response ${response.getJson()}", "DEBUG")
         
        	response.getJson().each {
         	log("${it.label} is ${it.power}.", "TRACE")
         	log("Bulb Type: ${it.product.name}.", "TRACE")
-        	log("Capabilities? Color Temperature = ${it.product.capabilities.has_variable_color_temp}, Is Color = ${it.product.capabilities.has_color}.", "TRACE")
+        	log("Has variable color temperature = ${it.product.capabilities.has_variable_color_temp}.", "TRACE")
+            log("Has color = ${it.product.capabilities.has_color}.", "TRACE")
+            log("Has ir = ${it.product.capabilities.has_ir}.", "TRACE")
+            log("Has Multizone = ${it.product.capabilities.has_multizone}.", "TRACE")
         	log("Brightness = ${it.brightness}.", "TRACE")
         	log("Color = [saturation:${it.color.saturation}], kelvin:${it.color.kelvin}, hue:${it.color.hue}.", "TRACE")
         
