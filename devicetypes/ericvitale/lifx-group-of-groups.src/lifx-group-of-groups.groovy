@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  * 
+ *  Version 1.3.4 - Fixed looping issue with retrying when lights are offline. (07/30/2017)
  *  Version 1.3.3 - Cleaned up a bit. (06/30/2017)
  *  Version 1.3.2 - Added the ability to use separate durations for on/off and setLevel commands. (06/26/2017)
  *  Version 1.3.1 - Added setLevelAndTemperature method to allow webCoRE set both with a single command. (06/25/2017)
@@ -561,7 +562,8 @@ def getDefaultStateTransitionDuration() {
 def retry() {
 	if(getRetryCount() < getMaxRetry()) {
     	log("Retrying command...", "INFO")
-		runIn( getRetryWait(5, getRetryCount() ), sendLastCommand )
+        incRetryCount()
+		runIn(getRetryWait(5, getRetryCount()), sendLastCommand )
     } else {
     	log("Too many retries...", "WARN")
         resetRetryCount()
@@ -575,8 +577,6 @@ def sendLastCommand() {
 def sendLIFXCommand(commands) {
 
 	setLastCommand(commands)
-    
-    log("Command = ${commands}", "INFO")
     
     def params = [
         uri: "https://api.lifx.com",
@@ -646,6 +646,7 @@ def putResponseHandler(response, data) {
             resetRetryCount()
         } else {
         	log("${bulbsOk} of ${totalBulbs} bulbs returned ok.", "WARN")
+            log("Retry Count = ${getRetryCount()}.", "INFO")
             retry()
         }
 
