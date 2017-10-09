@@ -2,7 +2,8 @@
  *  LIFX Group of Groups
  *
  *  Copyright 2016 ericvitale@gmail.com
- * 
+ *
+ *  Version 1.3.6 - Added more activity feed filtering. (10/9/2017) 
  *  Version 1.3.5 - Reduced activity feed chatter, also added a setting to disable on/off & setLevel messages. (10/8/2017)
  *  Version 1.3.4 - Fixed looping issue with retrying when lights are offline. (07/30/2017)
  *  Version 1.3.3 - Cleaned up a bit. (06/30/2017)
@@ -90,7 +91,8 @@ metadata {
        
        	input "defaultTransition", "decimal", title: "Level Transition Time (s)", required: true, defaultValue: 0.0
         input "defaultStateTransition", "decimal", title: "On/Off Transition Time (s)", required: true, defaultValue: 0.0
-        input "useActLog", "bool", title: "Use Activity Feed", required: true, defaultValue: true
+        input "useActLog", "bool", title: "On/Off/Level Act. Feed", required: true, defaultValue: true
+        input "useActLogDebug", "bool", title: "Debug Act. Feed", required: true, defaultValue: false
         input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
     }
     
@@ -173,6 +175,7 @@ def initialize() {
     setDefaultTransitionDuration(defaultTransition)
     setDefaultStateTransitionDuration(defaultStateTransition)
     setUseActivityLog(useActLog)
+    setUseActivityLogDebug(useActLogDebug)
 }
 
 def buildGroupList() {
@@ -287,7 +290,7 @@ def log(data, type) {
 }
 
 def syncOn() {
-	sendEvent(name: "switch", value: "on", data: [syncing: "true"])
+	sendEvent(name: "switch", value: "on", displayed: getUseActivityLog(), data: [syncing: "true"])
 }
 
 def on(duration=getDefaultStateTransitionDuration()) {
@@ -341,11 +344,11 @@ def setColor(value) {
     
     sendLIFXCommand([color: "saturation:${data.saturation / 100} hue:${data.hue * 3.6}"])
     
-    sendEvent(name: "hue", value: value.hue, displayed: false)
-    sendEvent(name: "saturation", value: value.saturation, displayed: false)
-    sendEvent(name: "color", value: value.hex, displayed: false)
-    sendEvent(name: "switch", value: "on", displayed: false)
-    sendEvent(name: "level", value: "${state.level}", displayed: false)
+    sendEvent(name: "hue", value: value.hue, displayed: getUseActivityLogDebug())
+    sendEvent(name: "saturation", value: value.saturation, displayed: getUseActivityLogDebug())
+    sendEvent(name: "color", value: value.hex, displayed: getUseActivityLogDebug())
+    sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
+    sendEvent(name: "level", value: "${state.level}", displayed: getUseActivityLogDebug())
 }
 
 def setColorTemperature(value) {
@@ -359,10 +362,10 @@ def setColorTemperature(value) {
     
     sendLIFXCommand([color: "kelvin:${value} saturation:0"])
             
-	sendEvent(name: "colorTemperature", value: value, displayed: false)
-	sendEvent(name: "color", value: "#ffffff", displayed: false)
-	sendEvent(name: "saturation", value: 0, displayed: false)
-    sendEvent(name: "level", value: "${state.level}", displayed: false)
+	sendEvent(name: "colorTemperature", value: value, displayed: getUseActivityLogDebug())
+	sendEvent(name: "color", value: "#ffffff", displayed: getUseActivityLogDebug())
+	sendEvent(name: "saturation", value: 0, displayed: getUseActivityLogDebug())
+    sendEvent(name: "level", value: "${state.level}", displayed: getUseActivityLogDebug())
 }
 
 def setHue(val) {
@@ -370,9 +373,9 @@ def setHue(val) {
     
     sendLIFXCommand([color: "hue:${val}"])
     
-    sendEvent(name: "hue", value: val, displayed: false)
-    sendEvent(name: "switch", value: "on", displayed: false)
-    sendEvent(name: "level", value: "${state.level}", displayed: false)
+    sendEvent(name: "hue", value: val, displayed: getUseActivityLogDebug())
+    sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
+    sendEvent(name: "level", value: "${state.level}", displayed: getUseActivityLogDebug())
 }
 
 def setSaturation(val) {
@@ -380,9 +383,9 @@ def setSaturation(val) {
     
     sendLIFXCommand([color: "saturation:${val}"])
     
-    sendEvent(name: "saturation", value: val, displayed: false)
-    sendEvent(name: "switch", value: "on", displayed: false)
-    sendEvent(name: "level", value: "${state.level}", displayed: false)
+    sendEvent(name: "saturation", value: val, displayed: getUseActivityLogDebug())
+    sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
+    sendEvent(name: "level", value: "${state.level}", displayed: getUseActivityLogDebug())
 }
 
 def setLevelAndTemperature(level, temperature, duration=getDefaultTransitionDuration()) {
@@ -402,11 +405,11 @@ def setLevelAndTemperature(level, temperature, duration=getDefaultTransitionDura
     }
     
     state.level = level
-	sendEvent(name: "level", value: level, displayed: getUseActivityLog())
+	sendEvent(name: "level", value: level, displayed: getUseActivityLogDebug())
     sendEvent(name: "switch", value: "on", displayed: getUseActivityLog())
-	sendEvent(name: "colorTemperature", value: temperature, displayed: false)
-	sendEvent(name: "color", value: "#ffffff", displayed: false)
-	sendEvent(name: "saturation", value: 0, displayed: false)
+	sendEvent(name: "colorTemperature", value: temperature, displayed: getUseActivityLogDebug())
+	sendEvent(name: "color", value: "#ffffff", displayed: getUseActivityLogDebug())
+	sendEvent(name: "saturation", value: 0, displayed: getUseActivityLogDebug())
     
     def brightness = level / 100
     
@@ -507,7 +510,7 @@ def updateLightStatus(lightStatus) {
     if(finalString == null) {
     	finalString = "--"
     }
-	sendEvent(name: "lightStatus", value: finalString, displayed: false)
+	sendEvent(name: "lightStatus", value: finalString, displayed: getUseActivityLogDebug())
 }
 
 def getUseActivityLog() {
@@ -519,6 +522,17 @@ def getUseActivityLog() {
 
 def setUseActivityLog(value) {
 	state.useActivityLog = value
+}
+
+def getUseActivityLogDebug() {
+	if(state.useActivityLogDebug == null) {
+    	state.useActivityLogDebug = false
+    }
+    return state.useActivityLogDebug
+}
+
+def setUseActivityLogDebug(value) {
+	state.useActivityLogDebug = value
 }
 
 def getLastCommand() {
@@ -700,10 +714,10 @@ def getResponseHandler(response, data) {
 
                     def b = df0.format(it.brightness * 100)
 
-                    sendEvent(name: "colorTemperature", value: it.color.kelvin, displayed: false)
-                    sendEvent(name: "color", value: "#ffffff", displayed: false)
-                    sendEvent(name: "level", value: b, displayed: getUseActivityLog())
-                    sendEvent(name: "switch", value: "on", displayed: getUseActivityLog())
+                    sendEvent(name: "colorTemperature", value: it.color.kelvin, displayed: getUseActivityLogDebug())
+                    sendEvent(name: "color", value: "#ffffff", displayed: getUseActivityLogDebug())
+                    sendEvent(name: "level", value: b, displayed: getUseActivityLogDebug())
+                    sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
                 } else {
                     log("Saturation is > 0.0, setting color.", "TRACE")
                     def h = df.format(it.color.hue)
@@ -712,14 +726,14 @@ def getResponseHandler(response, data) {
 
                     log("h = ${h}, s = ${s}, b = ${b}.", "TRACE")
 
-                    sendEvent(name: "hue", value: h, displayed: false)
-                    sendEvent(name: "saturation", value: s, displayed: false)
-                    sendEvent(name: "kelvin", value: it.color.kelvin, displayed: false)
-                    sendEvent(name: "level", value: b, displayed: getUseActivityLog())
-                    sendEvent(name: "switch", value: "on", displayed: getUseActivityLog())
+                    sendEvent(name: "hue", value: h, displayed: getUseActivityLogDebug())
+                    sendEvent(name: "saturation", value: s, displayed: getUseActivityLogDebug())
+                    sendEvent(name: "kelvin", value: it.color.kelvin, displayed: getUseActivityLogDebug())
+                    sendEvent(name: "level", value: b, displayed: getUseActivityLogDebug())
+                    sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
                 }
             } else if(it.power == "off") {
-                sendEvent(name: "switch", value: "off")
+                sendEvent(name: "switch", value: "off", displayed: getUseActivityLogDebug())
             }
         }
     } else {
