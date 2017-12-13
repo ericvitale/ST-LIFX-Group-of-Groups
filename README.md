@@ -14,10 +14,8 @@ This device handler also supports scenes, see the preferences section below.
 2. Setting Color
 3. Setting Color Temperature
 4. Setting Brightness
-5. Power Reporting
-6. Syncing Between Groups [Must have companion app installed](https://github.com/ericvitale/ST-LIFX-Group-of-Groups/blob/master/smartapps/ericvitale/lifx-sync.src/lifx-sync.groovy)
+5. Syncing Between Groups [Must have companion app installed](https://github.com/ericvitale/ST-LIFX-Group-of-Groups/blob/master/smartapps/ericvitale/lifx-sync.src/lifx-sync.groovy)
 7. 1 to 10 groups as a single device
-8. 0 to 5 scenes for the group (unfortunatly if you don't use these you cannot remove them from UI via settings)
 
 ## Installation via GitHub Integration
 1. Open SmartThings IDE in your web browser and log into your account.
@@ -54,7 +52,10 @@ This capability is the primary reason I created LGoG. By default, using the LIFX
 1. Create the groups of lights in your LIFX app. Yea, I know you can’t have a bulb in multiple groups, but LGoG fixes that! 
 2. Generate and API key, instructions below.
 3. Install the LGoG device handler.
-4. Configure the device, add a single group or multiple groups.
+4. Create a new device in the SmartThings IDE.
+5. Give make sure you select the proper device type (this handler)
+6. Open the device in the SmartThings App.
+7. Edit the configuration. Enter the API Key and the EXACT group name from LIFX (case matters).
 
 Why is this better? It is more efficient. Let’s say you have a kitchen which as 10 LIFX bulbs in it. If you use the standard bulbs that ST gives you, if you want to turn them all on you have to turn 10 bulbs on. Weather you do it one by one manually, use a syncing app, or use CoRE, you are sending 10 commands to LIFX and then 10 commands back to your bulbs. Using LGoG you send a single command to LIFX and they in turn send a single command to your bulbs. You will find that your groups will become much more reliable.
 
