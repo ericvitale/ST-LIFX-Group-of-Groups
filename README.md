@@ -73,7 +73,4 @@ As you can create multiple groups that control a device, you can now use the LIF
 2. 1-way Example: When "Group D" (Group D contains Group A, B, and C) is changed (switch or level), "Group C" is updated. When "Group C" is changed, "Group D" does not get updated.
 
 ### Scheduled Sync with LIFX
-Schedule the DH to double check the light status via lifx and update the ST status accordingly.
-
-### Power Usage Reporting
-Report power usage based on the number of bulbs in a group. This was all based on real world testing as accurate as I could get.
+This device now will update ST ever 60 seconds if the device turned on via LIFX.
