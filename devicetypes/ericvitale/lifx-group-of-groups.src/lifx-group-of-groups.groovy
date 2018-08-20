@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  *
+ *  Version 1.3.7 - Fix for new ST app. (08/19/2018)
  *  Version 1.3.6 - Added more activity feed filtering. (10/9/2017) 
  *  Version 1.3.5 - Reduced activity feed chatter, also added a setting to disable on/off & setLevel messages. (10/8/2017)
  *  Version 1.3.4 - Fixed looping issue with retrying when lights are offline. (07/30/2017)
@@ -50,7 +51,7 @@ include 'asynchttp_v1'
 import java.text.DecimalFormat;
 
 metadata {
-    definition (name: "LIFX Group of Groups", namespace: "ericvitale", author: "ericvitale@gmail.com") {
+    definition (name: "LIFX Group of Groups", namespace: "ericvitale", author: "ericvitale@gmail.com", vid: "generic-rgbw-color-bulb") {
         capability "Polling"
         capability "Switch"
         capability "Switch Level"
