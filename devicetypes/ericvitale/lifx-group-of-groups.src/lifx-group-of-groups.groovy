@@ -3,7 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  *
- *  Version 1.3.7 - Fix for new ST app. (08/19/2018)
+ *  Version 1.3.7 - Added support for the fast setting. (10/7/2018)
  *  Version 1.3.6 - Added more activity feed filtering. (10/9/2017) 
  *  Version 1.3.5 - Reduced activity feed chatter, also added a setting to disable on/off & setLevel messages. (10/8/2017)
  *  Version 1.3.4 - Fixed looping issue with retrying when lights are offline. (07/30/2017)
@@ -50,8 +50,12 @@ include 'asynchttp_v1'
 
 import java.text.DecimalFormat;
 
+private version() {
+	return "1.3.7a"
+}
+
 metadata {
-    definition (name: "LIFX Group of Groups", namespace: "ericvitale", author: "ericvitale@gmail.com", vid: "generic-rgbw-color-bulb") {
+    definition (name: "LIFX Group of Groups", namespace: "ericvitale", author: "ericvitale@gmail.com") {
         capability "Polling"
         capability "Switch"
         capability "Switch Level"
@@ -78,23 +82,31 @@ metadata {
     }
     
     preferences {
-    	input "token", "text", title: "API Token", required: true       
-        input "group01", "text", title: "Group 1", required: true
-        input "group02", "text", title: "Group 2", required: false
-        input "group03", "text", title: "Group 3", required: false
-        input "group04", "text", title: "Group 4", required: false
-        input "group05", "text", title: "Group 5", required: false
-        input "group06", "text", title: "Group 6", required: false
-        input "group07", "text", title: "Group 7", required: false
-        input "group08", "text", title: "Group 8", required: false
-        input "group09", "text", title: "Group 9", required: false
-        input "group10", "text", title: "Group 10", required: false
+    	section("LIFX Settings") {
+        	input "token", "text", title: "API Token", required: true
+        	input "fast", "bool", title: "Use Fast?", required: true, defaultValue: true
+            input "defaultTransition", "decimal", title: "Level Transition Time (s)", required: true, defaultValue: 0.0
+	        input "defaultStateTransition", "decimal", title: "On/Off Transition Time (s)", required: true, defaultValue: 0.0
+        }
+        
+        section("Groups") {
+        	input "group01", "text", title: "Group 1", required: true
+        	input "group02", "text", title: "Group 2", required: false
+        	input "group03", "text", title: "Group 3", required: false
+        	input "group04", "text", title: "Group 4", required: false
+        	input "group05", "text", title: "Group 5", required: false
+        	input "group06", "text", title: "Group 6", required: false
+        	input "group07", "text", title: "Group 7", required: false
+        	input "group08", "text", title: "Group 8", required: false
+        	input "group09", "text", title: "Group 9", required: false
+        	input "group10", "text", title: "Group 10", required: false
+        }
        
-       	input "defaultTransition", "decimal", title: "Level Transition Time (s)", required: true, defaultValue: 0.0
-        input "defaultStateTransition", "decimal", title: "On/Off Transition Time (s)", required: true, defaultValue: 0.0
-        input "useActLog", "bool", title: "On/Off/Level Act. Feed", required: true, defaultValue: true
-        input "useActLogDebug", "bool", title: "Debug Act. Feed", required: true, defaultValue: false
-        input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
+       	section("Logging") {
+	        input "useActLog", "bool", title: "On/Off/Level Act. Feed", required: true, defaultValue: true
+   	    	input "useActLogDebug", "bool", title: "Debug Act. Feed", required: true, defaultValue: false
+    	    input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
+        }
     }
     
     tiles(scale: 2) {
@@ -265,7 +277,7 @@ private determineLogLevel(data) {
 }
 
 def log(data, type) {
-    data = "LIFX-GoG -- ${device.label} -- ${data ?: ''}"
+    data = "LIFX-GoG.${version()}.${device.label} -- ${data ?: ''}"
         
     if (determineLogLevel(type) >= determineLogLevel(settings?.logging ?: "INFO")) {
         switch (type?.toUpperCase()) {
@@ -296,7 +308,7 @@ def syncOn() {
 
 def on(duration=getDefaultStateTransitionDuration()) {
 	log("Turning on...", "INFO")
-    sendLIFXCommand(["power" : "on", "duration" : duration])
+    sendLIFXCommand(["power" : "on", "duration" : duration, "fast" : getFast()])
     sendEvent(name: "switch", value: "on", displayed: getUseActivityLog(), data: [syncing: "false"])
     sendEvent(name: "level", value: "${state.level}", displayed: getUseActivityLog())
 }
@@ -307,7 +319,7 @@ def syncOff() {
 
 def off(duration=getDefaultStateTransitionDuration(), sync=false) {
 	log("Turning off...", "INFO")
-    sendLIFXCommand(["power" : "off", "duration" : duration])
+    sendLIFXCommand(["power" : "off", "duration" : duration, fast: getFast()])
     sendEvent(name: "switch", value: "off", displayed: getUseActivityLog(), data: [syncing: "false"])
 }
 
@@ -332,7 +344,7 @@ def setLevel(level, duration=getDefaultTransitionDuration()) {
     
     def brightness = level / 100
    
-    sendLIFXCommand(["brightness": brightness, "power": "on", "duration" : duration])
+    sendLIFXCommand(["brightness": brightness, "power": "on", "duration" : duration, "fast" : getFast()])
 }
 
 def setColor(value) {
@@ -343,7 +355,7 @@ def setColor(value) {
     data.saturation = value.saturation
     data.level = device.currentValue("level")
     
-    sendLIFXCommand([color: "saturation:${data.saturation / 100} hue:${data.hue * 3.6}"])
+    sendLIFXCommand([color: "saturation:${data.saturation / 100} hue:${data.hue * 3.6}", "fast" : getFast()])
     
     sendEvent(name: "hue", value: value.hue, displayed: getUseActivityLogDebug())
     sendEvent(name: "saturation", value: value.saturation, displayed: getUseActivityLogDebug())
@@ -361,7 +373,7 @@ def setColorTemperature(value) {
     	value = 9000
     }
     
-    sendLIFXCommand([color: "kelvin:${value} saturation:0"])
+    sendLIFXCommand([color: "kelvin:${value} saturation:0", "fast" : getFast()])
             
 	sendEvent(name: "colorTemperature", value: value, displayed: getUseActivityLogDebug())
 	sendEvent(name: "color", value: "#ffffff", displayed: getUseActivityLogDebug())
@@ -372,7 +384,7 @@ def setColorTemperature(value) {
 def setHue(val) {
 	log("Begin setting groups hue to ${val}.", "DEBUG")
     
-    sendLIFXCommand([color: "hue:${val}"])
+    sendLIFXCommand([color: "hue:${val}", "fast" : getFast()])
     
     sendEvent(name: "hue", value: val, displayed: getUseActivityLogDebug())
     sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
@@ -382,7 +394,7 @@ def setHue(val) {
 def setSaturation(val) {
 	log("Begin setting groups saturation to ${val}.", "DEBUG")
     
-    sendLIFXCommand([color: "saturation:${val}"])
+    sendLIFXCommand([color: "saturation:${val}", "fast" : getFast()])
     
     sendEvent(name: "saturation", value: val, displayed: getUseActivityLogDebug())
     sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
@@ -414,7 +426,7 @@ def setLevelAndTemperature(level, temperature, duration=getDefaultTransitionDura
     
     def brightness = level / 100
     
-    sendLIFXCommand([color : "kelvin:${temperature} saturation:0 brightness:${brightness}", "power" : "on", "duration" : duration])
+    sendLIFXCommand([color : "kelvin:${temperature} saturation:0 brightness:${brightness}", "power" : "on", "duration" : duration, "fast": getFast()])
 }
 
 def poll() {
@@ -542,6 +554,17 @@ def getLastCommand() {
 
 def setLastCommand(command) {
 	state.lastCommand = command
+}
+
+def setFast(value) {
+	state.fastSetting = value
+}
+
+def getFast() {
+	if(state.fastSetting == null) {
+    	state.fastSetting = true
+ 	}
+	return state.fastSetting
 }
 
 def incRetryCount() {
