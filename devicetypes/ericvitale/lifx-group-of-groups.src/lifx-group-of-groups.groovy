@@ -3,7 +3,8 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  *
- *  Version 1.3.7 - Added support for the fast setting. (10/7/2018)
+ *  Version 1.3.7 - Added support for the fast setting. https://api.developer.lifx.com/docs/set-state#fast-mode
+ *    Resolved bug that was impacting the effects functionality. (10/7/2018)
  *  Version 1.3.6 - Added more activity feed filtering. (10/9/2017) 
  *  Version 1.3.5 - Reduced activity feed chatter, also added a setting to disable on/off & setLevel messages. (10/8/2017)
  *  Version 1.3.4 - Fixed looping issue with retrying when lights are offline. (07/30/2017)
@@ -51,7 +52,7 @@ include 'asynchttp_v1'
 import java.text.DecimalFormat;
 
 private version() {
-	return "1.3.7a"
+	return "1.3.7b"
 }
 
 metadata {
@@ -438,15 +439,15 @@ def poll() {
 def parse(description) {
 }
 
-def runEffect(effect="pulse", color="", from_color="", cycles=5, period=0.5, brightness=0.5) {
-	log("runEffect(effect=${effect}, color=${color}: 1.0, from_color=${from_color}, cycles=${cycles}, period=${period}, brightness=${brightness}.", "DEBUG")
+def runEffect(effect="pulse", color="0.1", from_color="0.0", cycles=5.0, period=0.5, brightness=0.5) {
+	log("runEffect(effect=${effect}, color=${color}, from_color=${from_color}, cycles=${cycles}, period=${period}, brightness=${brightness}.", "DEBUG")
 
 	if(effect != "pulse" && effect != "breathe") {
     	log("${effect} is not a value effect, defaulting to pulse.", "ERROR")
         effect = "pulse"
     }
 	
-    runLIFXEffect(["color" : "${color.toLowerCase()} brightness:${brightness}".trim(), "from_color" : "${from_color.toLowerCase()} brightness:${brightness}".trim(), "cycles" : "${cycles}" ,"period" : "${period}"], effect)
+    runLIFXEffect(["color" : "${color.toLowerCase()} brightness:${brightness}".trim(), "from_color" : "${from_color.toLowerCase()} brightness:${brightness}".trim(), "cycles" : cycles ,"period" : period, "power_on" : true], effect)
 }
 
 def apiFlash(cycles=5, period=0.5, brightness1=1.0, brightness2=0.0) {
@@ -463,7 +464,7 @@ def apiFlash(cycles=5, period=0.5, brightness1=1.0, brightness2=0.0) {
     	brightness2 = 1.0
     }
 
-	runLIFXEffect(["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : "${cycles}" ,"period" : "${period}"], "pulse")
+	runLIFXEffect(["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : cycles, "period" : period, "power_on" : true], "pulse")
 }
 
 def apiBreathe(cycles=3, period=2.0, brightness1=1.0, brightness2=0.0) {
@@ -480,7 +481,7 @@ def apiBreathe(cycles=3, period=2.0, brightness1=1.0, brightness2=0.0) {
     	brightness2 = 1.0
     }
 
-	runLIFXEffect(["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : "${cycles}" ,"period" : "${period}"], "breathe")
+	runLIFXEffect(["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : cycles ,"period" : period, "power_on" : true], "breathe")
 }
 
 def getHex(val) {
