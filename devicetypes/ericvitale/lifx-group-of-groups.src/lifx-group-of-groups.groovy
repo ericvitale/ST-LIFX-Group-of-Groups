@@ -643,7 +643,7 @@ def sendLIFXInquiry() {
 def postResponseHandler(response, data) {
 
     if(response.getStatus() == 200 || response.getStatus() == 207) {
-		log("Response received from LFIX in the postReponseHandler.", "DEBUG")
+		log("Response received from LIFX in the postReponseHandler.", "DEBUG")
     } else {
     	log("LIFX failed to adjust group. LIFX returned ${response.getStatus()}.", "ERROR")
         log("Error = ${response.getErrorData()}", "ERROR")
@@ -653,7 +653,7 @@ def postResponseHandler(response, data) {
 def putResponseHandler(response, data) {
 
     if(response.getStatus() == 200 || response.getStatus() == 207) {
-		log("Response received from LFIX in the putReponseHandler.", "DEBUG")
+		log("Response received from LIFX in the putReponseHandler.", "DEBUG")
         
         log("Response = ${response.getJson()}", "DEBUG")
         
@@ -690,26 +690,31 @@ def putResponseHandler(response, data) {
 def getResponseHandler(response, data) {
 
     if(response.getStatus() == 200 || response.getStatus() == 207) {
-		log("Response received from LFIX in the getReponseHandler.", "DEBUG")
+	log("Response received from LIFX in the getReponseHandler.", "DEBUG")
         
         log("Response ${response.getJson()}", "DEBUG")
         
-       	response.getJson().each {
-        	log("${it.label} is ${it.power}.", "TRACE")
-        	log("Bulb Type: ${it.product.name}.", "TRACE")
-        	log("Has variable color temperature = ${it.product.capabilities.has_variable_color_temp}.", "TRACE")
-            log("Has color = ${it.product.capabilities.has_color}.", "TRACE")
-            log("Has ir = ${it.product.capabilities.has_ir}.", "TRACE")
-            log("Has Multizone = ${it.product.capabilities.has_multizone}.", "TRACE")
-        	log("Brightness = ${it.brightness}.", "TRACE")
-        	log("Color = [saturation:${it.color.saturation}], kelvin:${it.color.kelvin}, hue:${it.color.hue}.", "TRACE")
+        def totalBulbs = 0
+        def bulbsOk = 0
         
-        	DecimalFormat df = new DecimalFormat("###,##0.0#")
-        	DecimalFormat dfl = new DecimalFormat("###,##0.000")
-        	DecimalFormat df0 = new DecimalFormat("###,##0")
+       	response.getJson().each {
+		totalBulbs++
+		log("${it.label} is ${it.power}.", "TRACE")
+		log("Bulb Type: ${it.product.name}.", "TRACE")
+		log("Has variable color temperature = ${it.product.capabilities.has_variable_color_temp}.", "TRACE")
+		log("Has color = ${it.product.capabilities.has_color}.", "TRACE")
+		log("Has ir = ${it.product.capabilities.has_ir}.", "TRACE")
+		log("Has Multizone = ${it.product.capabilities.has_multizone}.", "TRACE")
+		log("Brightness = ${it.brightness}.", "TRACE")
+		log("Color = [saturation:${it.color.saturation}], kelvin:${it.color.kelvin}, hue:${it.color.hue}.", "TRACE")
+
+		DecimalFormat df = new DecimalFormat("###,##0.0#")
+		DecimalFormat dfl = new DecimalFormat("###,##0.000")
+		DecimalFormat df0 = new DecimalFormat("###,##0")
 
             if(it.power == "on") {
-                sendEvent(name: "switch", value: "on")
+            	bulbsOk++
+                //sendEvent(name: "switch", value: "on")
                 if(it.color.saturation == 0.0) {
                     log("Saturation is 0.0, setting color temperature.", "TRACE")
 
@@ -718,7 +723,7 @@ def getResponseHandler(response, data) {
                     sendEvent(name: "colorTemperature", value: it.color.kelvin, displayed: getUseActivityLogDebug())
                     sendEvent(name: "color", value: "#ffffff", displayed: getUseActivityLogDebug())
                     sendEvent(name: "level", value: b, displayed: getUseActivityLogDebug())
-                    sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
+                    //sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
                 } else {
                     log("Saturation is > 0.0, setting color.", "TRACE")
                     def h = df.format(it.color.hue)
@@ -731,11 +736,19 @@ def getResponseHandler(response, data) {
                     sendEvent(name: "saturation", value: s, displayed: getUseActivityLogDebug())
                     sendEvent(name: "kelvin", value: it.color.kelvin, displayed: getUseActivityLogDebug())
                     sendEvent(name: "level", value: b, displayed: getUseActivityLogDebug())
-                    sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
+                    //sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
                 }
-            } else if(it.power == "off") {
-                sendEvent(name: "switch", value: "off", displayed: getUseActivityLogDebug())
             }
+            //else if(it.power == "off") {
+                //sendEvent(name: "switch", value: "off", displayed: getUseActivityLogDebug())
+            //}
+        }
+        updateLightStatus("${bulbsOk} of ${totalBulbs}")
+        if (bulbsOk == totalBulbs) {
+        	sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
+        }
+        else {
+        	sendEvent(name: "switch", value: "off", displayed: getUseActivityLogDebug())
         }
     } else {
     	log("LIFX failed to update the group. LIFX returned ${response.getStatus()}.", "ERROR")
