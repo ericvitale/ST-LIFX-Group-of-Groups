@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  *
+ *  Version 1.3.8 - (Vinay) UI Updates, sync changes and added preference for LIFX refresh. (11/19/2018)
  *  Version 1.3.7 - Fix for new ST app. (08/19/2018)
  *  Version 1.3.6 - Added more activity feed filtering. (10/9/2017) 
  *  Version 1.3.5 - Reduced activity feed chatter, also added a setting to disable on/off & setLevel messages. (10/8/2017)
@@ -63,10 +64,11 @@ metadata {
         
         command "setAdjustedColor"
         command "setColor"
-        command "refresh"
+        command "refresh"        
         command "poll"
         command "syncOn"
         command "syncOff"
+        command "syncPartial"        
         command "runEffect"
         command "transitionLevel"
         command "apiFlash"
@@ -75,10 +77,12 @@ metadata {
         
         attribute "colorName", "string"
         attribute "lightStatus", "string"
+        attribute "deviceStatus", "string"
     }
     
     preferences {
-    	input "token", "text", title: "API Token", required: true       
+    	input "token", "text", title: "LIFX API Token", required: true
+        input "defaultRefreshSchedule", "number", title: "LIFX Refresh Schedule (Minutes)", required: true, defaultValue: 1
         input "group01", "text", title: "Group 1", required: true
         input "group02", "text", title: "Group 2", required: false
         input "group03", "text", title: "Group 3", required: false
@@ -88,10 +92,9 @@ metadata {
         input "group07", "text", title: "Group 7", required: false
         input "group08", "text", title: "Group 8", required: false
         input "group09", "text", title: "Group 9", required: false
-        input "group10", "text", title: "Group 10", required: false
-       
+        input "group10", "text", title: "Group 10", required: false       
        	input "defaultTransition", "decimal", title: "Level Transition Time (s)", required: true, defaultValue: 0.0
-        input "defaultStateTransition", "decimal", title: "On/Off Transition Time (s)", required: true, defaultValue: 0.0
+        input "defaultStateTransition", "decimal", title: "On/Off Transition Time (s)", required: true, defaultValue: 0.0        
         input "useActLog", "bool", title: "On/Off/Level Act. Feed", required: true, defaultValue: true
         input "useActLogDebug", "bool", title: "Debug Act. Feed", required: true, defaultValue: false
         input "logging", "enum", title: "Log Level", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
@@ -101,59 +104,61 @@ metadata {
     	multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 4, canChangeIcon: true){
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
 				attributeState "on", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#00a0dc", nextState:"turningOff"
+				attributeState "off", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ffffff", nextState:"turningOn"                
+				attributeState "turningOn", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#00a0dc", nextState:"turningOff"
+				attributeState "turningOff", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#8c92ac", nextState:"turningOn"
+                attributeState "partial", label:'${name}', icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#e86d13", nextState:"turningOn"
+			}
+        }
+        
+        multiAttributeTile(name:"switchDetails", type: "lighting", canChangeIcon: true){
+			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
+				attributeState "on", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#00a0dc", nextState:"turningOff"
 				attributeState "off", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ffffff", nextState:"turningOn"
 				attributeState "turningOn", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#00a0dc", nextState:"turningOff"
-				attributeState "turningOff", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#fffA62", nextState:"turningOn"
+				attributeState "turningOff", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#8c92ac", nextState:"turningOn"
+                attributeState "partial", label:'TURN ON', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#e86d13", nextState:"turningOn"
+			}            
+            
+            tileAttribute ("device.color", key: "COLOR_CONTROL") {
+				attributeState "color", action:"setColor"
 			}
             
             tileAttribute ("device.level", key: "SLIDER_CONTROL") {
         		attributeState "default", action:"switch level.setLevel"
-            }
+            }            
             
-            tileAttribute ("device.lightStatus", key: "SECONDARY_CONTROL") {
-				attributeState "default", label:'${currentValue}', action: "refresh.refresh"
-			}
+            tileAttribute("device.lightStatus", key: "SECONDARY_CONTROL") {
+				attributeState "default", label: 'ON: ${currentValue}', action: "refresh.refresh"
+			}            
+        }            
+        
+        valueTile("brightness", "device.level", decoration: "flat", width: 2, height: 1) {
+        	state "level", label: 'Brightness (%)'
         }
         
-        multiAttributeTile(name:"switchDetails", type: "lighting", width: 6, height: 4, canChangeIcon: true){
-			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
-				attributeState "on", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#00a0dc", nextState:"turningOff"
-				attributeState "off", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#ffffff", nextState:"turningOn"
-				attributeState "turningOn", label:'${name}', action:"switch.off", icon:"http://hosted.lifx.co/smartthings/v1/196xOn.png", backgroundColor:"#fffA62", nextState:"turningOff"
-				attributeState "turningOff", label:'${name}', action:"switch.on", icon:"http://hosted.lifx.co/smartthings/v1/196xOff.png", backgroundColor:"#fffA62", nextState:"turningOn"
-			}
-            
-            tileAttribute ("device.lightStatus", key: "SECONDARY_CONTROL") {
-				attributeState "default", label:'${currentValue}', action: "refresh.refresh"
-			}
-        }
-        
-        valueTile("Brightness", "device.level", width: 2, height: 1) {
-        	state "level", label: 'Brightness ${currentValue}%'
-        }
-        
-        controlTile("levelSliderControl", "device.level", "slider", width: 4, height: 1) {
+        controlTile("levelSliderControl", "device.level", "slider", width: 2, height: 1) {
         	state "level", action:"switch level.setLevel"
         }
         
-        valueTile("colorTemp", "device.colorTemperature", inactiveLabel: false, decoration: "flat", height: 1, width: 2) {
-			state "colorTemp", label: '${currentValue}K'
+        valueTile("colorTemp", "device.colorTemperature", inactiveLabel: false, decoration: "flat", width: 2, height: 1) {
+			state "colorTemp", label: 'Temperature (K)'
 		}
         
-		controlTile("colorTempSliderControl", "device.colorTemperature", "slider", height: 1, width: 4, inactiveLabel: false, range:"(2500..9000)") {
+		controlTile("colorTempSliderControl", "device.colorTemperature", "slider", width: 2, height: 1, range:"(2500..9000)") {
 			state "colorTemp", action:"color temperature.setColorTemperature"
-		}
-        
-        controlTile("rgbSelector", "device.color", "color", height: 6, width: 6, inactiveLabel: false) {
-            state "color", action:"setColor"
-        }
+		}        
         
         standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
 			state "default", label:"", action:"refresh.refresh", icon: "st.secondary.refresh"
 		}
+        
+        valueTile("deviceStatus", "device.deviceStatus", decoration: "flat", width: 4, height: 1) {
+        	state "deviceStatus", label: 'Bulbs Responding: \n${currentValue}'
+        }         
 
         main(["switch"])
-        details(["switchDetails", "Brightness", "levelSliderControl", "colorTemp", "colorTempSliderControl", "rgbSelector", "refresh"])
+        details(["switchDetails", "brightness", "levelSliderControl", "refresh", "colorTemp", "colorTempSliderControl", "deviceStatus"])
     }
 }
 
@@ -170,13 +175,15 @@ def refresh() {
 }
 
 def initialize() {
-	log("Initializing...", "DEBUG")
+	log("Begin Initializing...", "DEBUG")
     getGroups(true)
-    setupSchedule()
     setDefaultTransitionDuration(defaultTransition)
-    setDefaultStateTransitionDuration(defaultStateTransition)
+    setDefaultStateTransitionDuration(defaultStateTransition)    
     setUseActivityLog(useActLog)
     setUseActivityLogDebug(useActLogDebug)
+    setRefreshSchedule(defaultRefreshSchedule)
+    setupSchedule()
+    log("End Initializing...", "DEBUG")
 }
 
 def buildGroupList() {
@@ -291,7 +298,18 @@ def log(data, type) {
 }
 
 def syncOn() {
+	log("Received Sync ON...", "DEBUG")
 	sendEvent(name: "switch", value: "on", displayed: getUseActivityLog(), data: [syncing: "true"])
+}
+
+def syncPartial() {
+	log("Received Sync PARTIAL...", "DEBUG")
+	sendEvent(name: "switch", value: "partial", displayed: getUseActivityLog(), data: [syncing: "true"])
+}
+
+def syncOff() {
+	log("Received Sync OFF...", "DEBUG")
+	sendEvent(name: "switch", value: "off", displayed: getUseActivityLog(), data: [syncing: "true"])
 }
 
 def on(duration=getDefaultStateTransitionDuration()) {
@@ -299,10 +317,6 @@ def on(duration=getDefaultStateTransitionDuration()) {
     sendLIFXCommand(["power" : "on", "duration" : duration])
     sendEvent(name: "switch", value: "on", displayed: getUseActivityLog(), data: [syncing: "false"])
     sendEvent(name: "level", value: "${state.level}", displayed: getUseActivityLog())
-}
-
-def syncOff() {
-	 sendEvent(name: "switch", value: "off", displayed: getUseActivityLog(), data: [syncing: "true"])
 }
 
 def off(duration=getDefaultStateTransitionDuration(), sync=false) {
@@ -317,7 +331,7 @@ def transitionLevel(value, duration=getDefaultTransitionDuration()) {
 }
 
 def setLevel(level, duration=getDefaultTransitionDuration()) {
-	log("Begin setting groups level to ${value} over ${duration} seconds.", "DEBUG")
+	log("Begin setting groups level to ${level} over ${duration} seconds.", "DEBUG")
     
     if (level > 100) {
 		level = 100
@@ -327,6 +341,7 @@ def setLevel(level, duration=getDefaultTransitionDuration()) {
 	}
     
     state.level = level
+    
 	sendEvent(name: "level", value: level, displayed: getUseActivityLog())
     sendEvent(name: "switch", value: "on", displayed: false)
     
@@ -454,21 +469,15 @@ def apiFlash(cycles=5, period=0.5, brightness1=1.0, brightness2=0.0) {
 	runLIFXEffect(["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : "${cycles}" ,"period" : "${period}"], "pulse")
 }
 
-def apiBreathe(cycles=3, period=2.0, brightness1=1.0, brightness2=0.0) {
+def apiBreathe(color, cycles=3, period=2.0, brightness=1.0) {
     
-    if(brightness1 < 0.0) {
-    	brightness1 = 0.0
-    } else if(brightness1 > 1.0) {
-    	brightness1 = 1.0
-    }
-    
-    if(brightness2 < 0.0) {
-    	brightness2 = 0.0
-    } else if(brightness2 > 1.0) {
-    	brightness2 = 1.0
+    if(brightness < 0.0) {
+    	brightness = 0.0
+    } else if(brightness > 1.0) {
+    	brightness = 1.0
     }
 
-	runLIFXEffect(["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : "${cycles}" ,"period" : "${period}"], "breathe")
+	runLIFXEffect(["color" : "${color.toLowerCase()} brightness:${brightness}".trim(), "cycles" : "${cycles}" ,"period" : "${period}"], "breathe")
 }
 
 def getHex(val) {
@@ -494,7 +503,7 @@ def getHex(val) {
 }
 
 def setupSchedule() {
-	log("Begin setupSchedule().", "DEBUG")
+	log("Begin setupSchedule() with refresh schedule: ${getRefreshSchedule()} minutes.", "DEBUG")
     
     try {
 	    unschedule(refresh)
@@ -503,7 +512,7 @@ def setupSchedule() {
         return
     }
     
-    runEvery1Minute(refresh)
+    schedule("0 0/${getRefreshSchedule()} * * * ?", refresh)
 }
 
 def updateLightStatus(lightStatus) {
@@ -512,6 +521,14 @@ def updateLightStatus(lightStatus) {
     	finalString = "--"
     }
 	sendEvent(name: "lightStatus", value: finalString, displayed: getUseActivityLogDebug())
+}
+
+def updateDeviceStatus(deviceStatus) {
+	def finalString = deviceStatus
+    if(finalString == null) {
+    	finalString = "--"
+    }
+	sendEvent(name: "deviceStatus", value: finalString, displayed: getUseActivityLogDebug())
 }
 
 def getUseActivityLog() {
@@ -577,6 +594,14 @@ def getDefaultTransitionDuration() {
 	return state.transitionDuration
 }
 
+def setRefreshSchedule(value) {
+	state.refreshSchedule = value
+}
+
+def getRefreshSchedule() {	
+	return state.refreshSchedule
+}
+
 def setDefaultStateTransitionDuration(value) {
 	state.onOffTransitionDuration = value
 }
@@ -614,7 +639,7 @@ def sendLIFXCommand(commands) {
         body: commands
     ]
     
-    asynchttp_v1.put('putResponseHandler', params)
+    asynchttp_v1.put('putResponseHandler', params, commands)
 }
 
 def runLIFXEffect(commands, effect) {
@@ -626,7 +651,7 @@ def runLIFXEffect(commands, effect) {
         body: commands
     ]
     
-    asynchttp_v1.post('postResponseHandler', params)
+    asynchttp_v1.post('postResponseHandler', params, commands)
 }
 
 def sendLIFXInquiry() {
@@ -642,20 +667,24 @@ def sendLIFXInquiry() {
 
 def postResponseHandler(response, data) {
 
+	log("postResponseHandler: Commands sent: ${data}", "DEBUG")
     if(response.getStatus() == 200 || response.getStatus() == 207) {
-		log("Response received from LIFX in the postReponseHandler.", "DEBUG")
+		log("postResponseHandler: Response received from LIFX.", "DEBUG")        
+        log("postResponseHandler: Response = ${response.getJson()}", "TRACE")
     } else {
-    	log("LIFX failed to adjust group. LIFX returned ${response.getStatus()}.", "ERROR")
-        log("Error = ${response.getErrorData()}", "ERROR")
+    	log("postResponseHandler: LIFX failed to adjust group. LIFX returned ${response.getStatus()}.", "ERROR")
+        log("postResponseHandler: Error = ${response.getErrorData()}", "ERROR")
     }
 }
 
 def putResponseHandler(response, data) {
-
+	
+    def commands = data // commands used for post
+    log("putResponseHandler: Commands sent: ${commands}", "DEBUG")
+    
     if(response.getStatus() == 200 || response.getStatus() == 207) {
-		log("Response received from LIFX in the putReponseHandler.", "DEBUG")
-        
-        log("Response = ${response.getJson()}", "DEBUG")
+		log("putResponseHandler: Response received from LIFX.", "DEBUG")
+        log("putResponseHandler: Response = ${response.getJson()}", "TRACE")
         
         def totalBulbs = response.getJson().results.length()
         def results = response.getJson().results
@@ -671,87 +700,114 @@ def putResponseHandler(response, data) {
         }
         
         if(bulbsOk == totalBulbs) { 
-            log("${bulbsOk} of ${totalBulbs} bulbs returned ok.", "INFO")
+            log("putResponseHandler: ${bulbsOk} of ${totalBulbs} bulbs OK.", "INFO")
             resetRetryCount()
         } else {
-        	log("${bulbsOk} of ${totalBulbs} bulbs returned ok.", "WARN")
-            log("Retry Count = ${getRetryCount()}.", "INFO")
+        	log("putResponseHandler: ${bulbsOk} of ${totalBulbs} bulbs OK.", "WARN")
+            log("putResponseHandler: Retry Count = ${getRetryCount()}.", "INFO")
             retry()
         }
-
-        updateLightStatus("${bulbsOk} of ${totalBulbs}")
+        updateDeviceStatus("${bulbsOk} of ${totalBulbs}")
+		
+        def onStatus = "--"
+        if (commands.power == "off" && bulbsOk == totalBulbs) {
+        	onStatus = "0 of ${totalBulbs}" //all bulbs did turn off successfully since response was "ok"
+        }
+        else if (commands.power == "off" && bulbsOk != totalBulbs) {
+        	onStatus = "${totalBulbs - bulbsOk} of ${totalBulbs}" // all bulbs didn't turn off successfully
+        }
+        else {        	
+        	onStatus = "${bulbsOk} of ${totalBulbs}"
+        }
+        
+        log("putResponseHandler: ${onStatus} bulbs ON.", "INFO")
+        updateLightStatus(onStatus)
         
     } else {
-    	log("LIFX failed to adjust group. LIFX returned ${response.getStatus()}.", "ERROR")
-        log("Error = ${response.getErrorData()}", "ERROR")
+    	log("putResponseHandler: LIFX failed to adjust group. LIFX returned ${response.getStatus()}.", "ERROR")
+        log("putResponseHandler: Error = ${response.getErrorData()}", "ERROR")
     }
 }
 
 def getResponseHandler(response, data) {
 
-    if(response.getStatus() == 200 || response.getStatus() == 207) {
-	log("Response received from LIFX in the getReponseHandler.", "DEBUG")
+	log("getResponseHandler: Command sent [Inquiry].", "DEBUG")
+    if(response.getStatus() == 200 || response.getStatus() == 207) {    
+		log("getResponseHandler: Response received from LIFX.", "DEBUG")
+        log("getResponseHandler: Response ${response.getJson()}", "TRACE")
         
-        log("Response ${response.getJson()}", "DEBUG")
+        DecimalFormat df = new DecimalFormat("###,##0.0#")
+        DecimalFormat dfl = new DecimalFormat("###,##0.000")
+        DecimalFormat df0 = new DecimalFormat("###,##0")
         
         def totalBulbs = 0
+        def bulbsOn = 0
         def bulbsOk = 0
         
-       	response.getJson().each {
-		totalBulbs++
-		log("${it.label} is ${it.power}.", "TRACE")
-		log("Bulb Type: ${it.product.name}.", "TRACE")
-		log("Has variable color temperature = ${it.product.capabilities.has_variable_color_temp}.", "TRACE")
-		log("Has color = ${it.product.capabilities.has_color}.", "TRACE")
-		log("Has ir = ${it.product.capabilities.has_ir}.", "TRACE")
-		log("Has Multizone = ${it.product.capabilities.has_multizone}.", "TRACE")
-		log("Brightness = ${it.brightness}.", "TRACE")
-		log("Color = [saturation:${it.color.saturation}], kelvin:${it.color.kelvin}, hue:${it.color.hue}.", "TRACE")
-
-		DecimalFormat df = new DecimalFormat("###,##0.0#")
-		DecimalFormat dfl = new DecimalFormat("###,##0.000")
-		DecimalFormat df0 = new DecimalFormat("###,##0")
-
-            if(it.power == "on") {
+       	response.getJson().each {        
+        	log("getResponseHandler: ${it.label} is ${it.power}.", "TRACE")
+            log("getResponseHandler: Connected = ${it.connected}.", "TRACE")
+        	log("getResponseHandler: Bulb Type: ${it.product.name}.", "TRACE")
+        	log("getResponseHandler: Has variable color temperature = ${it.product.capabilities.has_variable_color_temp}.", "TRACE")
+            log("getResponseHandler: Has color = ${it.product.capabilities.has_color}.", "TRACE")
+            log("getResponseHandler: Has ir = ${it.product.capabilities.has_ir}.", "TRACE")
+            log("getResponseHandler: Has Multizone = ${it.product.capabilities.has_multizone}.", "TRACE")
+        	log("getResponseHandler: Brightness = ${it.brightness}.", "TRACE")            
+        	log("getResponseHandler: Color = [saturation:${it.color.saturation}], kelvin:${it.color.kelvin}, hue:${it.color.hue}.", "TRACE")        	
+			
+            totalBulbs++
+            
+            if(it.connected) {
             	bulbsOk++
-                //sendEvent(name: "switch", value: "on")
-                if(it.color.saturation == 0.0) {
-                    log("Saturation is 0.0, setting color temperature.", "TRACE")
+                
+                if(it.power == "on") {
+                    //sendEvent(name: "switch", value: "on")
+                    bulbsOn++
+                
+                    if(it.color.saturation == 0.0) {
+                        log("getResponseHandler: Saturation is 0.0, setting color temperature.", "TRACE")
 
-                    def b = df0.format(it.brightness * 100)
+                        def b = df0.format(it.brightness * 100)
 
-                    sendEvent(name: "colorTemperature", value: it.color.kelvin, displayed: getUseActivityLogDebug())
-                    sendEvent(name: "color", value: "#ffffff", displayed: getUseActivityLogDebug())
-                    sendEvent(name: "level", value: b, displayed: getUseActivityLogDebug())
-                    //sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
-                } else {
-                    log("Saturation is > 0.0, setting color.", "TRACE")
-                    def h = df.format(it.color.hue)
-                    def s = df.format(it.color.saturation)
-                    def b = df0.format(it.brightness * 100)
+                        sendEvent(name: "colorTemperature", value: it.color.kelvin, displayed: getUseActivityLogDebug())
+                        sendEvent(name: "color", value: "#ffffff", displayed: getUseActivityLogDebug())
+                        sendEvent(name: "level", value: b, displayed: getUseActivityLogDebug())
+                        
+                    } else {
+                        log("getResponseHandler: Saturation is > 0.0, setting color.", "TRACE")
 
-                    log("h = ${h}, s = ${s}, b = ${b}.", "TRACE")
+                        def h = df.format(it.color.hue)
+                        def s = df.format(it.color.saturation)
+                        def b = df0.format(it.brightness * 100)
 
-                    sendEvent(name: "hue", value: h, displayed: getUseActivityLogDebug())
-                    sendEvent(name: "saturation", value: s, displayed: getUseActivityLogDebug())
-                    sendEvent(name: "kelvin", value: it.color.kelvin, displayed: getUseActivityLogDebug())
-                    sendEvent(name: "level", value: b, displayed: getUseActivityLogDebug())
-                    //sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
+                        log("h = ${h}, s = ${s}, b = ${b}.", "TRACE")
+                        sendEvent(name: "hue", value: h, displayed: getUseActivityLogDebug())
+                        sendEvent(name: "saturation", value: s, displayed: getUseActivityLogDebug())
+                        sendEvent(name: "kelvin", value: it.color.kelvin, displayed: getUseActivityLogDebug())
+                        sendEvent(name: "level", value: b, displayed: getUseActivityLogDebug())
+                    }
                 }
-            }
-            //else if(it.power == "off") {
-                //sendEvent(name: "switch", value: "off", displayed: getUseActivityLogDebug())
-            //}
+            }            
         }
-        updateLightStatus("${bulbsOk} of ${totalBulbs}")
-        if (bulbsOk == totalBulbs) {
+        
+        log("getResponseHandler: ${bulbsOk} of ${totalBulbs} bulbs OK.", "DEBUG")
+        updateDeviceStatus("${bulbsOk} of ${totalBulbs}")
+        
+        log("getResponseHandler: ${bulbsOn} of ${totalBulbs} bulbs ON.", "DEBUG")        
+        updateLightStatus("${bulbsOn} of ${totalBulbs}")
+        
+        
+        if (bulbsOn == totalBulbs) {
         	sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
         }
-        else {
+        else if(bulbsOn == 0) {
         	sendEvent(name: "switch", value: "off", displayed: getUseActivityLogDebug())
         }
+        else {
+        	sendEvent(name: "switch", value: "partial", displayed: getUseActivityLogDebug())
+        }        
     } else {
-    	log("LIFX failed to update the group. LIFX returned ${response.getStatus()}.", "ERROR")
-        log("Error = ${response.getErrorData()}", "ERROR")
+    	log("getResponseHandler: LIFX failed to update the group. LIFX returned ${response.getStatus()}.", "ERROR")
+        log("getResponseHandler: Error = ${response.getErrorData()}", "ERROR")
     }
 }
