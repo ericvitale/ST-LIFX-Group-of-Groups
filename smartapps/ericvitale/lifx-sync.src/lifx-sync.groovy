@@ -1,7 +1,8 @@
 /**
- *  LIFX Sync
- *  Version 1.0.0 - 10/21/16
+ *  LIFX Sync (Custom)
+ *  Version 1.0.0 - 11/2/2018
  *
+ *  1.0.1 - (Vinay) Changed sync handling to display on/off/partial status. Also changed sync mechanism to work two-way with a single sync automation configuration.
  *  1.0.0 - Initial release
  *
  *  This SmartApp will only work with devices using the LIFX Group of Groups device handler. If you attempt
@@ -51,7 +52,7 @@ def startPage() {
 
 def parentPage() {
 	return dynamicPage(name: "parentPage", title: "", nextPage: "", install: true, uninstall: true) {
-        section("Create a LFIX Sync.") {
+        section("Create a LIFX Sync.") {
             app(name: "childApps", appName: appName(), namespace: "ericvitale", title: "New LIFX Sync Automation", multiple: true)
         }
         
@@ -74,7 +75,7 @@ def childStartPage() {
 	}
 }
 
-private def appName() { return "${parent ? "LFIX Sync Automation" : "LIFX Sync"}" }
+private def appName() { return "${parent ? "LIFX Sync Automation" : "LIFX Sync"}" }
 
 private determineLogLevel(data) {
     switch (data?.toUpperCase()) {
@@ -152,10 +153,11 @@ def initParent() {
 }
 
 def initChild() {
-	subscribe(masterSwitches, "switch", switchHandler)
+	subscribe(masterSwitches, "switch", syncHandlerMaster)
+    subscribe(slaveSwitches, "switch", syncHandlerSlave)
 }
 
-def switchHandler(evt){
+def syncHandlerMaster(evt){
     if(evt?.data == null || (evt.value != "on" && evt.value != "off")) {
     	//Nothing...
     } else {
@@ -163,20 +165,94 @@ def switchHandler(evt){
         def j = parseJson(evt.data)
 
         if(j.syncing == "true") {
-            log("Syncing is true, do nothing.", "DEBUG")
+            log("syncHandlerMaster: Syncing is true, do nothing.", "INFO")
         } else {
-            slaveSwitches.each { it->
-            	if(evt.device.displayName != it.displayName) {
-                    log("LIFX Sync is syncing ${it.displayName}.", "INFO")
-                    if(evt.value == "off") {
-                        it.syncOff()
-                    } else {
-                        it.syncOn()
-                    }
-                } else {
-                	log("Skipping ${it.displayName} as it is the source.", "DEBUG")
-                }
+        	
+            log("syncHandlerMaster: Event ${evt.value} received for ${evt.device.name}", "INFO")
+            
+            /*
+            masterSwitches.each { s ->
+            	def temp = s.getGroups()
+            	log("${s.displayName} is ${s.currentSwitch}.", "DEBUG")
+                log("${s.displayName} contains ${temp}", "INFO")
+            } 
+            */
+            
+            def onSwitches = masterSwitches.findAll { switchVal ->
+        		switchVal.currentSwitch == "on" ? true : false
+    		}
+            
+            def on  = onSwitches.size()
+            def total = masterSwitches.size()
+            
+            log("syncHandlerMaster: ${on} out of ${total} switches are on.", "INFO")
+            
+            if (on == total) {
+            	log("syncHandlerMaster: Syncing ON", "DEBUG")
+            	slaveSwitches.syncOn()
             }
+            else if (on == 0) {
+            	log("syncHandlerMaster: Syncing OFF", "DEBUG")
+            	slaveSwitches.syncOff()
+            }
+            else {
+            	log("syncHandlerMaster: Syncing PARTIAL", "DEBUG")
+            	slaveSwitches.syncPartial()
+            }            
+            
+            runIn(3, refreshSlaveSwitches) // run delayed, saw some timing issues in my tests
         }
 	}
+}
+
+def syncHandlerSlave(evt){
+    if(evt?.data == null || (evt.value != "on" && evt.value != "off")) {
+    	//Nothing...
+    } else {
+
+        def j = parseJson(evt.data)
+
+        if(j.syncing == "true") {
+            log("syncHandlerSlave: Syncing is true, do nothing.", "INFO")
+        } else {
+        	
+            log("syncHandlerSlave: Event ${evt.value} received for ${evt.device.name}", "INFO")
+            
+            def onSwitches = slaveSwitches.findAll { switchVal ->
+        		switchVal.currentSwitch == "on" ? true : false
+    		}
+            
+            def on  = onSwitches.size()
+            def total = slaveSwitches.size()
+            
+            log("syncHandlerSlave: ${on} out of ${total} switches are on.", "INFO")
+            
+            if (on == total) {
+            	log("syncHandlerSlave: Syncing ON", "DEBUG")
+            	masterSwitches.syncOn()
+            }
+            else if (on == 0) {
+            	log("syncHandlerSlave: Syncing OFF", "DEBUG")
+            	masterSwitches.syncOff()
+            }
+            else {
+            	log("syncHandlerSlave: Syncing PARTIAL", "DEBUG")
+            	masterSwitches.syncPartial()
+            }            
+            
+            runIn(3, refreshMasterSwitches) // run delayed, saw some timing issues in my tests
+        }
+	}
+}
+
+def refreshSlaveSwitches()
+{
+	log("syncHandlerMaster: Issuing delayed poll command to slave switches", "INFO")
+	slaveSwitches.poll()
+}
+
+def refreshMasterSwitches()
+{
+	log("syncHandlerSlave: Issuing delayed poll command to master switches", "INFO")
+	masterSwitches.poll()
 }
