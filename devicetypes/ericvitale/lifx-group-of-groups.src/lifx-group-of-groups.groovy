@@ -3,6 +3,7 @@
  *
  *  Copyright 2016 ericvitale@gmail.com
  *
+ *  Version 1.3.9 - (Vinay) Added Last Refresh tile, and reverted apiBreathe to previous version. (11/27/2018)
  *  Version 1.3.8 - (Vinay) UI Updates, sync changes and added preference for LIFX refresh. (11/19/2018)
  *  Version 1.3.7 - Fix for new ST app. (08/19/2018)
  *  Version 1.3.6 - Added more activity feed filtering. (10/9/2017) 
@@ -78,6 +79,7 @@ metadata {
         attribute "colorName", "string"
         attribute "lightStatus", "string"
         attribute "deviceStatus", "string"
+        attribute "refreshStatus", "string"
     }
     
     preferences {
@@ -155,10 +157,14 @@ metadata {
         
         valueTile("deviceStatus", "device.deviceStatus", decoration: "flat", width: 4, height: 1) {
         	state "deviceStatus", label: 'Bulbs Responding: \n${currentValue}'
-        }         
+        }
+        
+        valueTile("refreshStatus", "device.refreshStatus", decoration: "flat", width: 4, height: 1) {
+        	state "refreshStatus", label: 'Last Refresh: \n${currentValue}'
+        }
 
         main(["switch"])
-        details(["switchDetails", "brightness", "levelSliderControl", "refresh", "colorTemp", "colorTempSliderControl", "deviceStatus"])
+        details(["switchDetails", "brightness", "levelSliderControl", "refresh", "colorTemp", "colorTempSliderControl", "deviceStatus", "refreshStatus"])
     }
 }
 
@@ -469,15 +475,21 @@ def apiFlash(cycles=5, period=0.5, brightness1=1.0, brightness2=0.0) {
 	runLIFXEffect(["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : "${cycles}" ,"period" : "${period}"], "pulse")
 }
 
-def apiBreathe(color, cycles=3, period=2.0, brightness=1.0) {
+def apiBreathe(cycles=3, period=2.0, brightness1=1.0, brightness2=0.0) {
     
-    if(brightness < 0.0) {
-    	brightness = 0.0
-    } else if(brightness > 1.0) {
-    	brightness = 1.0
+    if(brightness1 < 0.0) {
+    	brightness1 = 0.0
+    } else if(brightness1 > 1.0) {
+    	brightness1 = 1.0
+    }
+    
+    if(brightness2 < 0.0) {
+    	brightness2 = 0.0
+    } else if(brightness2 > 1.0) {
+    	brightness2 = 1.0
     }
 
-	runLIFXEffect(["color" : "${color.toLowerCase()} brightness:${brightness}".trim(), "cycles" : "${cycles}" ,"period" : "${period}"], "breathe")
+	runLIFXEffect(["color" : "brightness:${brightness1}", "from_color" : "brightness:${brightness2}", "cycles" : "${cycles}" ,"period" : "${period}"], "breathe")
 }
 
 def getHex(val) {
@@ -529,6 +541,14 @@ def updateDeviceStatus(deviceStatus) {
     	finalString = "--"
     }
 	sendEvent(name: "deviceStatus", value: finalString, displayed: getUseActivityLogDebug())
+}
+
+def updateRefreshStatus(refreshStatus) {
+	def finalString = refreshStatus
+    if(finalString == null) {
+    	finalString = "Last Refresh: \n--"
+    }
+	sendEvent(name: "refreshStatus", value: finalString, displayed: getUseActivityLogDebug())
 }
 
 def getUseActivityLog() {
@@ -796,6 +816,8 @@ def getResponseHandler(response, data) {
         log("getResponseHandler: ${bulbsOn} of ${totalBulbs} bulbs ON.", "DEBUG")        
         updateLightStatus("${bulbsOn} of ${totalBulbs}")
         
+        def now = new Date().format("yyyy-MM-dd HH:mm:ss", location.timeZone)
+        updateRefreshStatus(now)
         
         if (bulbsOn == totalBulbs) {
         	sendEvent(name: "switch", value: "on", displayed: getUseActivityLogDebug())
